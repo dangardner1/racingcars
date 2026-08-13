@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import './style.css';
+import { inject } from '@vercel/analytics';
 import { createPhysicsWorld, FIXED_STEP } from './physics/PhysicsWorld.js';
 import { DamageSystem } from './game/DamageSystem.js';
 import { Track } from './game/Track.js';
@@ -20,6 +21,9 @@ import { createCarSelect } from './ui/CarSelect.js';
 import { createHUD } from './ui/HUD.js';
 import { createResultsScreen } from './ui/ResultsScreen.js';
 import { SoundManager } from './audio/SoundManager.js';
+
+// Initialize Vercel Web Analytics
+inject();
 
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');
