@@ -1,0 +1,54 @@
+{
+  "id": "track01",
+  "theme": "desert_canyon",
+  "skyColor": "#e8a95c",
+  "fogColor": "#e8a95c",
+  "groundColor": "#8a6338",
+  "groundSegments": [
+    { "type": "flat", "x": -60, "width": 120 },
+    { "type": "flat", "x": 60, "width": 40 },
+    { "type": "gap", "x": 100, "width": 10 },
+    { "type": "flat", "x": 110, "width": 30 },
+    { "type": "flat", "x": 156, "width": 24 },
+    { "type": "crumblingBridge", "x": 180, "width": 16, "collapseAfterHits": 2 },
+    { "type": "flat", "x": 196, "width": 40 },
+    { "type": "gap", "x": 236, "width": 14 },
+    { "type": "flat", "x": 250, "width": 150 }
+  ],
+  "features": [
+    { "type": "ramp", "x": 60, "width": 14, "angle": 18 },
+    { "type": "loop", "x": 140, "radius": 8 }
+  ],
+  "hazards": [
+    { "type": "spikePit", "x": 100, "width": 10, "damage": 30 },
+    { "type": "boostPad", "x": 133, "width": 6, "speed": 30 },
+    { "type": "movingPlatform", "x": 236, "width": 6, "amplitude": 2.5, "period": 2.5, "axis": "y" }
+  ],
+  "waypoints": [
+    { "x": -60, "y": 0 },
+    { "x": 60, "y": 0 },
+    { "x": 74, "y": 4.5 },
+    { "x": 100, "y": 6 },
+    { "x": 110, "y": 0 },
+    { "x": 148, "y": 0 },
+    { "x": 156, "y": 0 },
+    { "x": 196, "y": 0 },
+    { "x": 236, "y": 0 },
+    { "x": 250, "y": 0 },
+    { "x": 400, "y": 0 }
+  ],
+  "finishLine": 390,
+  "startPositions": [
+    { "x": -58, "lane": 0 },
+    { "x": -54, "lane": 1 },
+    { "x": -50, "lane": 2 },
+    { "x": -46, "lane": 3 },
+    { "x": -42, "lane": 4 },
+    { "x": -38, "lane": 5 },
+    { "x": -34, "lane": 6 },
+    { "x": -30, "lane": 7 },
+    { "x": -26, "lane": 8 },
+    { "x": -22, "lane": 9 },
+    { "x": -18, "lane": 10 }
+  ]
+}
