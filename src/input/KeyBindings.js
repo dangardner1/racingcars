@@ -1,15 +1,15 @@
 export const P1_KEYS = {
   throttle: 'KeyW',
   brake: 'KeyS',
-  leanBack: 'KeyA',
-  leanForward: 'KeyD',
+  turnLeft: 'KeyA',
+  turnRight: 'KeyD',
   handbrake: 'Space',
 };
 
 export const P2_KEYS = {
   throttle: 'ArrowUp',
   brake: 'ArrowDown',
-  leanBack: 'ArrowLeft',
-  leanForward: 'ArrowRight',
+  turnLeft: 'ArrowLeft',
+  turnRight: 'ArrowRight',
   handbrake: 'ShiftRight',
 };

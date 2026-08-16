@@ -13,6 +13,9 @@ export class Car {
     this.baseColor = new THREE.Color(color);
     this.handlingPenalty = 0;
     this.eliminated = false;
+    this.pathHint = 0;
+    this.lapProgress = 0;
+    this._rawProgress = undefined;
 
     // Hood/spoiler offsets scale with chassis half-length so proportions
     // hold across the differently-sized car defs, not just the baseline car.
@@ -25,10 +28,13 @@ export class Car {
       new THREE.MeshStandardMaterial({ color })
     );
     chassisMesh.position.y = hy * 0.6;
+    chassisMesh.castShadow = true;
     this.chassisMesh = chassisMesh;
     this.group.add(chassisMesh);
 
     // Detachable damage parts, named so DamageSystem can pop them off on hits.
+    // Positioned toward local +X (forward) / -X (rear) to match the car's
+    // forward axis under the new RaycastVehicle physics.
     const hoodMesh = new THREE.Mesh(
       new THREE.BoxGeometry(0.7 * scaleX, 0.15, hz * 1.85),
       new THREE.MeshStandardMaterial({ color })
@@ -48,13 +54,15 @@ export class Car {
       spoiler: { mesh: spoilerMesh, detached: false },
     };
 
-    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.35, 16);
+    const wheelRadius = this.physics.wheelRadius;
+    const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, 0.32, 16);
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-    // Wheels are independent physics bodies in world space (not parented to
-    // the chassis), so their meshes are added directly to the scene rather
-    // than as children of this.group to avoid double-applying the chassis transform.
-    this.wheelMeshes = this.physics.wheels.map(() => {
+    // Wheels are virtual (raycast, not physics bodies) so their meshes are
+    // added directly to the scene rather than as children of this.group,
+    // and synced each frame from CANNON.RaycastVehicle's wheelInfos.
+    this.wheelMeshes = this.physics.vehicle.wheelInfos.map(() => {
       const mesh = new THREE.Mesh(wheelGeo, wheelMat);
+      mesh.castShadow = true;
       scene.add(mesh);
       return mesh;
     });
@@ -76,14 +84,15 @@ export class Car {
   }
 
   syncMeshes() {
-    const { chassisBody, wheels } = this.physics;
+    const { chassisBody, vehicle } = this.physics;
     this.group.position.copy(chassisBody.position);
     this.group.quaternion.copy(chassisBody.quaternion);
 
-    wheels.forEach((wheel, i) => {
+    vehicle.wheelInfos.forEach((wheel, i) => {
+      vehicle.updateWheelTransform(i);
       const mesh = this.wheelMeshes[i];
-      mesh.position.copy(wheel.body.position);
-      mesh.quaternion.copy(wheel.body.quaternion);
+      mesh.position.copy(wheel.worldTransform.position);
+      mesh.quaternion.copy(wheel.worldTransform.quaternion);
       mesh.rotateX(Math.PI / 2);
     });
   }
@@ -93,24 +102,41 @@ export class Car {
   }
 
   /**
+   * Nearest-point progress along `waypoints`, tracked with this car's own
+   * `pathHint` so repeated calls stay a cheap windowed search instead of
+   * re-scanning the whole path. `lapProgress` unwraps the path's 0..
+   * totalLength wraparound into a monotonically increasing distance
+   * traveled, so "finished" (a full lap) is just lapProgress >= totalLength
+   * even though raw path progress resets to ~0 at the start/finish line.
+   */
+  updateTrackProgress(waypoints) {
+    const loc = waypoints.locate(this.position, this.pathHint);
+    this.pathHint = loc.index;
+    if (this._rawProgress === undefined) {
+      this.lapProgress = loc.progress;
+    } else {
+      let delta = loc.progress - this._rawProgress;
+      if (delta < -waypoints.totalLength / 2) delta += waypoints.totalLength;
+      else if (delta > waypoints.totalLength / 2) delta -= waypoints.totalLength;
+      this.lapProgress += delta;
+    }
+    this._rawProgress = loc.progress;
+    this.trackState = loc;
+    return this.lapProgress;
+  }
+
+  /**
    * Resets the car to a safe position with zero velocity/rotation. Used as
    * a fall-off-track recovery (missed jump, tunneled through geometry) so a
-   * bad landing is never a permanent soft-lock.
+   * bad landing is never a permanent soft-lock. `quaternion` should be
+   * belly-parallel to the local road surface (see CarPhysics.js) so the
+   * car doesn't spawn tilted relative to a sloped respawn point.
    */
-  respawnAt(x, y) {
-    const { chassisBody, wheels } = this.physics;
-    chassisBody.position.set(x, y, 0);
+  respawnAt(position, quaternion) {
+    const { chassisBody } = this.physics;
+    chassisBody.position.copy(position);
     chassisBody.velocity.set(0, 0, 0);
     chassisBody.angularVelocity.set(0, 0, 0);
-    chassisBody.quaternion.set(0, 0, 0, 1);
-
-    const wheelBase = wheels.length > 1 ? this.physics.wheelBase : 0;
-    wheels.forEach((wheel, i) => {
-      const offset = wheelBase * (i - (wheels.length - 1) / 2);
-      wheel.body.position.set(x + offset, y - 0.1, 0);
-      wheel.body.velocity.set(0, 0, 0);
-      wheel.body.angularVelocity.set(0, 0, 0);
-      wheel.body.quaternion.set(0, 0, 0, 1);
-    });
+    chassisBody.quaternion.copy(quaternion ?? new CANNON.Quaternion(0, 0, 0, 1));
   }
 }

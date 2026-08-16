@@ -3,7 +3,7 @@ export function createCarSelect(container, carDefs, { onConfirm }) {
   el.className = 'screen car-select';
   el.innerHTML = `
     <h2>Select Cars</h2>
-    <p class="subtitle">Click to pick Player 1, click again to pick Player 2 &middot; remaining 9 race as AI</p>
+    <p class="subtitle">Click to pick Player 1, click again to pick Player 2 &middot; remaining 3 race as AI</p>
     <div class="grid car-grid"></div>
     <button class="btn btn-primary" id="confirm-btn" disabled>Start Race</button>
   `;

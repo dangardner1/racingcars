@@ -40,27 +40,27 @@ export function createHUD(container) {
     setTimeout(() => t.remove(), 3000);
   }
 
-  function placementOf(entries, waypoints, target) {
-    const progress = waypoints.progressForX(target.car.position.x);
+  function placementOf(entries, target) {
+    const progress = target.car.lapProgress;
     let rank = 1;
     for (const e of entries) {
       if (e.car === target.car) continue;
-      if (!e.car.eliminated && waypoints.progressForX(e.car.position.x) > progress) rank++;
+      if (!e.car.eliminated && e.car.lapProgress > progress) rank++;
     }
     return rank;
   }
 
-  function update(raceEntries, waypoints) {
+  function update(raceEntries) {
     const p1 = raceEntries[0];
     const p2 = raceEntries[1];
 
     p1Bar.style.width = `${Math.min(100, p1.car.damageSystem.hp)}%`;
     p1Bar.style.background = stageColor(p1.car.damageSystem.hp);
-    p1Place.textContent = p1.car.eliminated ? 'Eliminated' : `${placementOf(raceEntries, waypoints, p1)} / ${raceEntries.length}`;
+    p1Place.textContent = p1.car.eliminated ? 'Eliminated' : `${placementOf(raceEntries, p1)} / ${raceEntries.length}`;
 
     p2Bar.style.width = `${Math.min(100, p2.car.damageSystem.hp)}%`;
     p2Bar.style.background = stageColor(p2.car.damageSystem.hp);
-    p2Place.textContent = p2.car.eliminated ? 'Eliminated' : `${placementOf(raceEntries, waypoints, p2)} / ${raceEntries.length}`;
+    p2Place.textContent = p2.car.eliminated ? 'Eliminated' : `${placementOf(raceEntries, p2)} / ${raceEntries.length}`;
 
     for (const e of raceEntries) {
       if (e.car.eliminated && !seenEliminated.has(e)) {

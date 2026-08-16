@@ -1,15 +1,17 @@
 /**
  * Reconciles the two ways a round can end: all-but-one eliminated, or any
- * car crossing the finish line first. Whichever happens first wins the
- * round; everyone else is still ranked afterward so track progress matters
- * even for cars that didn't trigger the end condition themselves.
+ * car completing a full lap of the figure-eight first (its `lapProgress` —
+ * a monotonically increasing unwrap of the path's 0..totalLength progress,
+ * see Car.updateTrackProgress — reaching the path's total length).
+ * Whichever happens first wins the round; everyone else is still ranked
+ * afterward so track progress matters even for cars that didn't trigger the
+ * end condition themselves.
  */
 export class RaceManager {
-  constructor(entries, waypoints, finishLine) {
+  constructor(entries, waypoints) {
     // entries: [{ car, name }]
     this.entries = entries;
     this.waypoints = waypoints;
-    this.finishLine = finishLine;
     this.eliminationOrder = [];
     this.finished = false;
     this.winnerName = null;
@@ -27,7 +29,7 @@ export class RaceManager {
 
     const active = this.entries.filter((e) => !e.car.eliminated);
 
-    const finisher = active.find((e) => e.car.position.x >= this.finishLine);
+    const finisher = active.find((e) => e.car.lapProgress >= this.waypoints.totalLength);
     if (finisher) {
       this._finish(finisher, active);
       return;
@@ -43,11 +45,7 @@ export class RaceManager {
     this.winnerName = winnerEntry?.name ?? null;
 
     const others = activeEntries.filter((e) => e !== winnerEntry);
-    others.sort(
-      (a, b) =>
-        this.waypoints.progressForX(b.car.position.x) -
-        this.waypoints.progressForX(a.car.position.x)
-    );
+    others.sort((a, b) => b.car.lapProgress - a.car.lapProgress);
     // Eliminated cars rank by elimination order: surviving longer (later
     // elimination) is a better placement than being knocked out early.
     const eliminatedRanked = [...this.eliminationOrder].reverse();

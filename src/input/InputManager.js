@@ -19,8 +19,8 @@ export function readInput(keys) {
   const throttle = pressed.has(keys.throttle) ? 1 : 0;
   const brake = pressed.has(keys.brake) ? 1 : 0;
   let steer = 0;
-  if (pressed.has(keys.leanBack)) steer -= 1;
-  if (pressed.has(keys.leanForward)) steer += 1;
+  if (pressed.has(keys.turnLeft)) steer -= 1;
+  if (pressed.has(keys.turnRight)) steer += 1;
   const handbrake = pressed.has(keys.handbrake);
   return { throttle, brake, steer, handbrake };
 }

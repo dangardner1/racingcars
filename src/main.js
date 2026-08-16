@@ -13,7 +13,8 @@ import { attachCollisionDamage } from './physics/CollisionEvents.js';
 import { readInput } from './input/InputManager.js';
 import { P1_KEYS, P2_KEYS } from './input/KeyBindings.js';
 import { AIController } from './ai/AIController.js';
-import { SideScrollCamera } from './camera/SideScrollCamera.js';
+import { Waypoints } from './ai/Waypoints.js';
+import { TopDownCamera } from './camera/TopDownCamera.js';
 import { createMainMenu } from './ui/MainMenu.js';
 import { createTrackSelect } from './ui/TrackSelect.js';
 import { createCarSelect } from './ui/CarSelect.js';
@@ -26,16 +27,29 @@ const uiRoot = document.getElementById('ui-root');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const DEFAULT_BACKGROUND = 0x101018;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101018);
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
-camera.position.set(0, 5, 20);
+scene.background = new THREE.Color(DEFAULT_BACKGROUND);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
+camera.position.set(0, 30, 25);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.1);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-sun.position.set(5, 12, 8);
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(60, 90, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -95;
+sun.shadow.camera.right = 95;
+sun.shadow.camera.top = 95;
+sun.shadow.camera.bottom = -95;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 260;
+sun.shadow.bias = -0.0015;
 scene.add(sun);
 
 function resize() {
@@ -56,11 +70,45 @@ let race = null;
 const soundManager = new SoundManager();
 if (import.meta.env.DEV) window.__sound = soundManager;
 
+const FIELD_SIZE = 5; // 2 human + 3 AI
+const LANE_SPACING = 1.8; // keeps the outermost of 5 lanes (+-2) within the 11-wide road
+// Matches the wheels' natural at-rest extension (radius + suspension rest
+// length, minus the wheel-connection-point offset) so cars spawn with
+// wheels already touching, instead of free-falling onto the track and
+// catching one corner before the others — which was violently tipping cars
+// over on spawn.
+const SPAWN_LIFT = 1.16;
+
 function clearSceneForNewRace() {
   for (const child of [...scene.children]) {
     if (child === hemi || child === sun) continue;
     scene.remove(child);
   }
+  // startRace() overrides these right after with the new track's own
+  // colors; resetting here is what makes onMainMenu's call to this same
+  // function actually restore the default look instead of leaving the
+  // previous track's sky color/fog showing behind the main menu.
+  scene.background = new THREE.Color(DEFAULT_BACKGROUND);
+  scene.fog = null;
+}
+
+/**
+ * World spawn point + orientation for a start-grid lane. The orientation is
+ * belly-parallel to the local road slope (not just yawed to face the
+ * tangent) so a car spawned on a hill starts flush with all 4 wheels at
+ * roughly equal height above the surface, instead of dangling 1-3 wheels
+ * off a slope the yaw-only orientation didn't account for.
+ */
+function spawnForLane(track, lane) {
+  const idx = track.data.startIndex ?? 0;
+  const points = track.waypoints.points;
+  const node = points[idx];
+  const next = points[(idx + 1) % points.length];
+  const tangent = new THREE.Vector3().subVectors(next, node).normalize();
+  const lateral = Waypoints.lateral(tangent);
+  const position = new THREE.Vector3().copy(node).addScaledVector(lateral, lane * LANE_SPACING);
+  position.y += SPAWN_LIFT;
+  return { position, quaternion: Waypoints.levelQuaternion(tangent) };
 }
 
 function startRace(trackData, p1Def, p2Def) {
@@ -70,22 +118,22 @@ function startRace(trackData, p1Def, p2Def) {
   const { world, groundMaterial, carMaterial, loopMaterial } = createPhysicsWorld();
   const track = new Track(world, scene, groundMaterial, trackData, loopMaterial);
   scene.background = new THREE.Color(track.skyColor);
-  scene.fog = new THREE.Fog(track.fogColor, 40, 140);
+  scene.fog = new THREE.Fog(track.fogColor, 60, 220);
 
-  const sideScrollCamera = new SideScrollCamera(camera);
+  const topDownCamera = new TopDownCamera(camera);
 
-  function makeCar(def, x, isHuman) {
-    const car = createCarFromDef(world, carMaterial, scene, def, x);
+  function makeCar(def, lane, isHuman) {
+    const spawn = spawnForLane(track, lane);
+    const car = createCarFromDef(world, carMaterial, scene, def, spawn);
     const damageSystem = new DamageSystem(car, scene, world);
     car.damageSystem = damageSystem;
     car.physics.chassisBody.userData = { car };
-    for (const wheel of car.physics.wheels) wheel.body.userData = { car };
     // Shake the shared camera and play a crash sound on hard hits to either
     // human car — AI-only pileups elsewhere on track don't affect the
     // player-facing view/audio.
     const onImpact = isHuman
       ? (damage) => {
-          sideScrollCamera.addShake(damage / 60);
+          topDownCamera.addShake(damage / 60);
           soundManager.playCrash(damage / 30);
         }
       : undefined;
@@ -96,13 +144,13 @@ function startRace(trackData, p1Def, p2Def) {
   const starts = track.data.startPositions;
   const aiDefs = CAR_DEFS.filter((d) => d !== p1Def && d !== p2Def);
 
-  const p1Car = makeCar(p1Def, starts[0].x, true);
-  const p2Car = makeCar(p2Def, starts[1].x, true);
+  const p1Car = makeCar(p1Def, starts[0].lane, true);
+  const p2Car = makeCar(p2Def, starts[1].lane, true);
   soundManager.startEngine(p1Car);
   soundManager.startEngine(p2Car);
-  const aiEntries = aiDefs.slice(0, 9).map((def, i) => {
-    const start = starts[i + 2] ?? { x: starts[1].x - 4 - i * 3 };
-    const aiCar = makeCar(def, start.x);
+  const aiEntries = aiDefs.slice(0, FIELD_SIZE - 2).map((def, i) => {
+    const start = starts[i + 2] ?? { lane: starts[1].lane - 2 - i };
+    const aiCar = makeCar(def, start.lane);
     const controller = new AIController(aiCar, track.waypoints, {
       baseSpeed: def.topSpeed,
       skill: def.skill,
@@ -111,32 +159,33 @@ function startRace(trackData, p1Def, p2Def) {
   });
 
   const allCars = [p1Car, p2Car, ...aiEntries.map((e) => e.car)];
-  for (const c of allCars) c.lastSafeX = c.position.x;
 
   const raceEntries = [
     { car: p1Car, name: 'Player 1' },
     { car: p2Car, name: 'Player 2' },
     ...aiEntries.map((e) => ({ car: e.car, name: e.car.def.name })),
   ];
-  const raceManager = new RaceManager(raceEntries, track.waypoints, track.data.finishLine);
+  const raceManager = new RaceManager(raceEntries, track.waypoints);
 
-  race = { world, track, p1Car, p2Car, aiEntries, allCars, raceEntries, raceManager, sideScrollCamera };
+  race = { world, track, p1Car, p2Car, aiEntries, allCars, raceEntries, raceManager, topDownCamera };
   if (import.meta.env.DEV) window.__race = race;
 
   hud.show();
   gameState.set(States.RACING);
 }
 
-const FALL_RESPAWN_Y = -20;
+const FALL_RESPAWN_Y = -60;
 const FALL_DAMAGE = 20;
 
 function handleFallRecovery(c) {
-  if (c.position.y > -1.5) {
-    c.lastSafeX = c.position.x;
-  } else if (c.position.y < FALL_RESPAWN_Y) {
-    c.respawnAt(c.lastSafeX, 5);
-    if (c.damageSystem) c.damageSystem.applyDamage(FALL_DAMAGE);
-  }
+  if (c.position.y >= FALL_RESPAWN_Y) return;
+  const state = c.trackState;
+  const quaternion = state ? Waypoints.levelQuaternion(state.tangent) : undefined;
+  const position = state
+    ? new CANNON.Vec3(state.point.x, state.point.y + SPAWN_LIFT, state.point.z)
+    : new CANNON.Vec3(0, 3, 0);
+  c.respawnAt(position, quaternion);
+  if (c.damageSystem) c.damageSystem.applyDamage(FALL_DAMAGE);
 }
 
 // --- UI / state wiring ------------------------------------------------------
@@ -197,13 +246,13 @@ function tick(now) {
 
   if (gameState.state === States.RACING && race) {
     accumulator += frameDt;
-    const { world, track, p1Car, p2Car, aiEntries, allCars, raceEntries, raceManager, sideScrollCamera } = race;
+    const { world, track, p1Car, p2Car, aiEntries, allCars, raceEntries, raceManager, topDownCamera } = race;
 
-    const getLeaderProgress = () =>
-      Math.max(
-        track.waypoints.progressForX(p1Car.position.x),
-        track.waypoints.progressForX(p2Car.position.x)
-      );
+    const getLeaderProgress = () => {
+      const l1 = p1Car.updateTrackProgress(track.waypoints);
+      const l2 = p2Car.updateTrackProgress(track.waypoints);
+      return Math.max(l1, l2);
+    };
 
     while (accumulator >= FIXED_STEP) {
       p1Car.applyInput(readInput(P1_KEYS));
@@ -215,6 +264,11 @@ function tick(now) {
       accumulator -= FIXED_STEP;
     }
 
+    // Guarantees P1/P2 progress is fresh this frame even in the rare case
+    // every AI car (the only other caller of getLeaderProgress) is eliminated.
+    p1Car.updateTrackProgress(track.waypoints);
+    p2Car.updateTrackProgress(track.waypoints);
+
     for (const c of allCars) {
       c.syncMeshes();
       c.damageSystem.update(frameDt);
@@ -222,9 +276,9 @@ function tick(now) {
     track.update(frameDt);
     for (const c of allCars) handleFallRecovery(c);
     raceManager.update();
-    hud.update(raceEntries, track.waypoints);
+    hud.update(raceEntries);
 
-    sideScrollCamera.update(p1Car.position, p2Car.position, frameDt);
+    topDownCamera.update(p1Car.position, p2Car.position, frameDt);
     soundManager.updateEngine(p1Car, p1Car.physics.chassisBody.velocity.length(), p1Car.eliminated);
     soundManager.updateEngine(p2Car, p2Car.physics.chassisBody.velocity.length(), p2Car.eliminated);
 

@@ -1,6 +1,16 @@
-// One-off generator for track02-track10.json. Run with `node scripts/generate-tracks.mjs`.
-// Not part of the runtime game — just a way to author 9 structurally-varied
-// tracks consistently instead of hand-typing near-duplicate JSON blobs.
+// Generator for all 10 track0*.json files. Run with `node scripts/generate-tracks.mjs`.
+// Not part of the runtime game — just a way to author 10 structurally
+// varied figure-eight tracks consistently instead of hand-typing ~120
+// path nodes per track.
+//
+// Each track's centerline is a lemniscate (figure-eight) curve:
+//   x(t) = A*sin(t), z(t) = (A/2)*sin(2t), t in [0, 2*PI)
+// which is a single continuous closed loop that passes through the XZ
+// origin twice (t=0 and t=PI), at a clean ~90 degree crossing angle. The
+// first pass (t=0) is built as a ground-level tunnel; the second pass
+// (t=PI) is built as an elevated bridge — so the "figure eight crossing
+// itself" is a real, physically-resolved highway-style overpass, not an
+// illusion.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -8,75 +18,115 @@ import path from 'node:path';
 const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'tracks');
 
 const THEMES = [
+  { file: 'track01', id: 'track01', theme: 'desert_canyon', sky: '#e8a95c', fog: '#e8a95c', ground: '#8a6338',
+    scale: 1.0, hillAmp: 3.5, bridgeHeight: 8.5, pitDamage: 30, bridgeHits: 2, platformAmp: 2.5, platformPeriod: 2.5, loopRadius: 8, boostSpeed: 30 },
   { file: 'track02', id: 'track02', theme: 'volcano', sky: '#c94e2d', fog: '#a03a24', ground: '#4a2318',
-    rampAngle: 22, pitDamage: 32, bridgeHits: 2, platformAmp: 3, platformPeriod: 2.2 },
+    scale: 1.05, hillAmp: 4.5, bridgeHeight: 9, pitDamage: 32, bridgeHits: 2, platformAmp: 3, platformPeriod: 2.2, loopRadius: 8.5, boostSpeed: 31 },
   { file: 'track03', id: 'track03', theme: 'ice_glacier', sky: '#bfe6f5', fog: '#d8f0fa', ground: '#e8f6fb',
-    rampAngle: 14, pitDamage: 22, bridgeHits: 3, platformAmp: 2, platformPeriod: 3.2 },
+    scale: 0.92, hillAmp: 2.5, bridgeHeight: 7.5, pitDamage: 22, bridgeHits: 3, platformAmp: 2, platformPeriod: 3.2, loopRadius: 7.5, boostSpeed: 28 },
   { file: 'track04', id: 'track04', theme: 'neon_city', sky: '#1a1030', fog: '#241640', ground: '#2c2c3a',
-    rampAngle: 20, pitDamage: 28, bridgeHits: 2, platformAmp: 2.8, platformPeriod: 2.0 },
+    scale: 1.1, hillAmp: 2, bridgeHeight: 10, pitDamage: 28, bridgeHits: 2, platformAmp: 2.8, platformPeriod: 2.0, loopRadius: 9, boostSpeed: 32 },
   { file: 'track05', id: 'track05', theme: 'junkyard', sky: '#8a8a6a', fog: '#75755a', ground: '#5a4f3a',
-    rampAngle: 24, pitDamage: 26, bridgeHits: 2, platformAmp: 2.2, platformPeriod: 2.6 },
+    scale: 0.9, hillAmp: 4, bridgeHeight: 8, pitDamage: 26, bridgeHits: 2, platformAmp: 2.2, platformPeriod: 2.6, loopRadius: 7, boostSpeed: 29 },
   { file: 'track06', id: 'track06', theme: 'jungle_ruins', sky: '#3f7d4a', fog: '#2f6238', ground: '#4a3a24',
-    rampAngle: 18, pitDamage: 27, bridgeHits: 3, platformAmp: 2.5, platformPeriod: 2.8 },
+    scale: 1.0, hillAmp: 5, bridgeHeight: 8.5, pitDamage: 27, bridgeHits: 3, platformAmp: 2.5, platformPeriod: 2.8, loopRadius: 8, boostSpeed: 30 },
   { file: 'track07', id: 'track07', theme: 'construction_site', sky: '#d9c27a', fog: '#c9b164', ground: '#8a7a52',
-    rampAngle: 26, pitDamage: 30, bridgeHits: 2, platformAmp: 3.2, platformPeriod: 2.4 },
+    scale: 1.05, hillAmp: 3, bridgeHeight: 9.5, pitDamage: 30, bridgeHits: 2, platformAmp: 3.2, platformPeriod: 2.4, loopRadius: 8.5, boostSpeed: 31 },
   { file: 'track08', id: 'track08', theme: 'space_station', sky: '#0a0a1a', fog: '#12122a', ground: '#3a3a4e',
-    rampAngle: 16, pitDamage: 24, bridgeHits: 2, platformAmp: 3.5, platformPeriod: 3.6 },
+    scale: 1.15, hillAmp: 1.5, bridgeHeight: 11, pitDamage: 24, bridgeHits: 2, platformAmp: 3.5, platformPeriod: 3.6, loopRadius: 9.5, boostSpeed: 33 },
   { file: 'track09', id: 'track09', theme: 'storm_coast', sky: '#4a5a66', fog: '#3a4852', ground: '#425058',
-    rampAngle: 20, pitDamage: 29, bridgeHits: 2, platformAmp: 2.6, platformPeriod: 2.1 },
+    scale: 0.95, hillAmp: 3.5, bridgeHeight: 8, pitDamage: 29, bridgeHits: 2, platformAmp: 2.6, platformPeriod: 2.1, loopRadius: 7.8, boostSpeed: 30 },
   { file: 'track10', id: 'track10', theme: 'haunted_circuit', sky: '#241a2e', fog: '#1a1220', ground: '#2e2438',
-    rampAngle: 22, pitDamage: 31, bridgeHits: 2, platformAmp: 3, platformPeriod: 2.5 },
+    scale: 1.0, hillAmp: 4, bridgeHeight: 8.5, pitDamage: 31, bridgeHits: 2, platformAmp: 3, platformPeriod: 2.5, loopRadius: 8, boostSpeed: 31 },
 ];
 
-function buildTrack(t) {
-  const rampX = 60, rampWidth = 14;
-  const pitX = 100, pitWidth = 10;
-  const bridgeX = 180, bridgeWidth = 16;
-  const gap2X = 236, gap2Width = 14;
-  const finishX = 390;
+const N = 120; // path nodes around the whole figure-eight
+const WIDTH = 11;
+const CROSSING_WINDOW = 0.34; // rad half-width of the tunnel/bridge crossing zone
+const CROSSING_SIGMA = 0.16;
+
+// Node-index fractions (of N) for start grid + hazards, chosen to stay
+// clear of both crossing windows (~+-7 nodes around index 0 and N/2).
+const START_FRAC = 0.15;
+const GAP_FRAC = 0.25;
+const BOOST_FRAC = 0.365;
+const LOOP_FRAC = 0.40;
+const PIT_FRAC = 0.63;
+const CRUMBLE_FRAC = 0.85;
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function angularDist(t, center) {
+  let d = Math.abs(t - center) % (Math.PI * 2);
+  if (d > Math.PI) d = Math.PI * 2 - d;
+  return d;
+}
+
+function buildTrack(t_) {
+  const A = 55 * t_.scale; // lobe half-extent along X
+
+  const path = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * Math.PI * 2;
+    const x = A * Math.sin(t);
+    const z = (A / 2) * Math.sin(2 * t);
+
+    const distToTunnel = angularDist(t, 0);
+    const distToBridge = angularDist(t, Math.PI);
+    const tunnelT = Math.exp(-(distToTunnel * distToTunnel) / (2 * CROSSING_SIGMA * CROSSING_SIGMA));
+    const bridgeT = Math.exp(-(distToBridge * distToBridge) / (2 * CROSSING_SIGMA * CROSSING_SIGMA));
+
+    const hill = t_.hillAmp * Math.sin(t * 2.3) * (1 - tunnelT) * (1 - bridgeT);
+    const bridgeBump = t_.bridgeHeight * bridgeT;
+    const y = Math.max(0, hill) + bridgeBump;
+
+    let type = 'flat';
+    if (distToTunnel < CROSSING_WINDOW) type = 'tunnel';
+    else if (distToBridge < CROSSING_WINDOW) type = 'bridge';
+
+    path.push({ x: round2(x), y: round2(y), z: round2(z), width: WIDTH, type });
+  }
+
+  const idx = (frac) => Math.round(N * frac);
+  const gapIdx = idx(GAP_FRAC);
+  const loopIdx = idx(LOOP_FRAC);
+  const boostIdx = idx(BOOST_FRAC);
+  const pitIdx = idx(PIT_FRAC);
+  const crumbleIdx = idx(CRUMBLE_FRAC);
+  const startIdx = idx(START_FRAC);
+
+  // A short jump gap with a moving platform timed to bridge it.
+  path[gapIdx].type = 'gap';
+  path[(gapIdx + 1) % N].type = 'gap';
+  // A spike pit: a gap with damage spikes at the bottom instead of a
+  // platform, so it needs to be jumped/avoided rather than timed.
+  path[pitIdx].type = 'gap';
+  // A separate at-grade crumbling bridge elsewhere on the loop.
+  path[crumbleIdx].type = 'crumblingBridge';
+  path[(crumbleIdx + 1) % N].type = 'crumblingBridge';
 
   return {
-    id: t.id,
-    theme: t.theme,
-    skyColor: t.sky,
-    fogColor: t.fog,
-    groundColor: t.ground,
-    groundSegments: [
-      { type: 'flat', x: -60, width: 120 },
-      { type: 'flat', x: rampX, width: 40 },
-      { type: 'gap', x: pitX, width: pitWidth },
-      { type: 'flat', x: 110, width: 70 },
-      { type: 'crumblingBridge', x: bridgeX, width: bridgeWidth, collapseAfterHits: t.bridgeHits },
-      { type: 'flat', x: bridgeX + bridgeWidth, width: 40 },
-      { type: 'gap', x: gap2X, width: gap2Width },
-      { type: 'flat', x: gap2X + gap2Width, width: 150 },
-    ],
-    features: [
-      { type: 'ramp', x: rampX, width: rampWidth, angle: t.rampAngle },
-    ],
+    id: t_.id,
+    theme: t_.theme,
+    skyColor: t_.sky,
+    fogColor: t_.fog,
+    groundColor: t_.ground,
+    path,
+    features: [{ type: 'loop', atIndex: loopIdx, radius: t_.loopRadius, segCount: 28 }],
     hazards: [
-      { type: 'spikePit', x: pitX, width: pitWidth, damage: t.pitDamage },
-      { type: 'movingPlatform', x: gap2X, width: 6, amplitude: t.platformAmp, period: t.platformPeriod, axis: 'y' },
+      { type: 'movingPlatform', atIndex: gapIdx, spanNodes: 2, amplitude: t_.platformAmp, period: t_.platformPeriod, axis: 'vertical' },
+      { type: 'boostPad', atIndex: boostIdx, spanNodes: 2, speed: t_.boostSpeed },
+      { type: 'spikePit', atIndex: pitIdx, spanNodes: 1, damage: t_.pitDamage },
     ],
-    waypoints: [
-      { x: -60, y: 0 },
-      { x: rampX, y: 0 },
-      { x: rampX + rampWidth, y: rampWidth * Math.tan((t.rampAngle * Math.PI) / 180) },
-      { x: pitX, y: 4 },
-      { x: 110, y: 0 },
-      { x: bridgeX, y: 0 },
-      { x: bridgeX + bridgeWidth, y: 0 },
-      { x: gap2X, y: 0 },
-      { x: gap2X + gap2Width, y: 0 },
-      { x: finishX + 10, y: 0 },
-    ],
-    finishLine: finishX,
-    startPositions: Array.from({ length: 11 }, (_, i) => ({ x: -58 + i * 4, lane: i })),
+    startIndex: startIdx,
+    startPositions: [{ lane: -2 }, { lane: -1 }, { lane: 0 }, { lane: 1 }, { lane: 2 }],
   };
 }
 
 for (const t of THEMES) {
   const data = buildTrack(t);
   writeFileSync(path.join(outDir, `${t.file}.json`), JSON.stringify(data, null, 2) + '\n');
-  console.log('wrote', t.file);
+  console.log('wrote', t.file, `(${data.path.length} nodes)`);
 }
