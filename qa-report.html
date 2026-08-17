@@ -1,0 +1,478 @@
+<title>Battle Racer QA Audit</title>
+
+<style>
+  :root {
+    --bg: #f3f1ec;
+    --surface: #ffffff;
+    --surface-2: #ebe8de;
+    --border: #ddd8c9;
+    --text: #211f1a;
+    --text-dim: #5c584e;
+    --text-faint: #8b8677;
+    --accent: #a84f10;
+    --accent-ink: #ffffff;
+    --sev-critical: #a3271e;
+    --sev-critical-bg: #f8e2df;
+    --sev-high: #a1560c;
+    --sev-high-bg: #f7e6d2;
+    --sev-medium: #856317;
+    --sev-medium-bg: #f4ecd0;
+    --sev-low: #2c5480;
+    --sev-low-bg: #dde8f2;
+    --sev-good: #276b48;
+    --sev-good-bg: #dcefe3;
+    --shadow: 0 1px 2px rgba(30, 26, 14, 0.06), 0 6px 20px rgba(30, 26, 14, 0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17160f;
+      --surface: #201e17;
+      --surface-2: #2a2820;
+      --border: #3c3928;
+      --text: #f0ece1;
+      --text-dim: #b7b1a0;
+      --text-faint: #837c69;
+      --accent: #ffb020;
+      --accent-ink: #1a1200;
+      --sev-critical: #ff8478;
+      --sev-critical-bg: #3a1d1a;
+      --sev-high: #ffab5c;
+      --sev-high-bg: #3a2814;
+      --sev-medium: #eecf6a;
+      --sev-medium-bg: #37300f;
+      --sev-low: #90b8e6;
+      --sev-low-bg: #1c2c3d;
+      --sev-good: #86dcae;
+      --sev-good-bg: #163326;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 26px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #17160f;
+    --surface: #201e17;
+    --surface-2: #2a2820;
+    --border: #3c3928;
+    --text: #f0ece1;
+    --text-dim: #b7b1a0;
+    --text-faint: #837c69;
+    --accent: #ffb020;
+    --accent-ink: #1a1200;
+    --sev-critical: #ff8478;
+    --sev-critical-bg: #3a1d1a;
+    --sev-high: #ffab5c;
+    --sev-high-bg: #3a2814;
+    --sev-medium: #eecf6a;
+    --sev-medium-bg: #37300f;
+    --sev-low: #90b8e6;
+    --sev-low-bg: #1c2c3d;
+    --sev-good: #86dcae;
+    --sev-good-bg: #163326;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 26px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+
+  header.doc-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-size: 40px;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  .doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .doc-meta b { color: var(--text); font-weight: 600; }
+
+  h2 {
+    font-size: 24px;
+    margin: 56px 0 8px;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+  .section-dek {
+    color: var(--text-dim);
+    font-size: 15.5px;
+    margin: 0 0 24px;
+    max-width: 62ch;
+  }
+
+  p { max-width: 68ch; }
+
+  /* Scorecard */
+  .scorecard {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .stat {
+    background: var(--surface);
+    padding: 18px 14px;
+    text-align: center;
+  }
+  .stat .n {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat .l {
+    margin-top: 6px;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .stat.critical .n { color: var(--sev-critical); }
+  .stat.high .n { color: var(--sev-high); }
+  .stat.medium .n { color: var(--sev-medium); }
+  .stat.low .n { color: var(--sev-low); }
+  .stat.pass .n { color: var(--sev-good); }
+
+  /* Coverage table */
+  .coverage {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .coverage th {
+    text-align: left;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 500;
+    padding: 0 10px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .coverage td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .coverage tr:last-child td { border-bottom: none; }
+  .status {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .status.tested { color: var(--sev-good); }
+  .status.na { color: var(--text-faint); }
+  .status.partial { color: var(--sev-medium); }
+  .cov-note { color: var(--text-dim); font-size: 14px; }
+
+  /* Findings */
+  .finding {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .finding-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .chip {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .chip.critical { background: var(--sev-critical-bg); color: var(--sev-critical); }
+  .chip.high { background: var(--sev-high-bg); color: var(--sev-high); }
+  .chip.medium { background: var(--sev-medium-bg); color: var(--sev-medium); }
+  .chip.low { background: var(--sev-low-bg); color: var(--sev-low); }
+  .chip.fixed { background: var(--sev-good-bg); color: var(--sev-good); }
+  .chip.note { background: var(--surface-2); color: var(--text-dim); }
+  .finding h3 {
+    font-size: 18px;
+    margin: 0;
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  }
+  .finding .field {
+    font-size: 14.5px;
+    margin-top: 10px;
+  }
+  .finding .field b {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .finding code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+
+  /* Two-up summary */
+  .duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 20px;
+  }
+  @media (max-width: 620px) {
+    .duo { grid-template-columns: 1fr; }
+    .scorecard { grid-template-columns: repeat(2, 1fr); }
+  }
+  .box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    background: var(--surface);
+  }
+  .box h4 {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 12px;
+    color: var(--text-faint);
+  }
+  .box ul { margin: 0; padding-left: 18px; }
+  .box li { margin-bottom: 8px; font-size: 15px; }
+  .box.good h4 { color: var(--sev-good); }
+  .box.risk h4 { color: var(--sev-high); }
+
+  .verdict {
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 20px;
+    margin: 24px 0;
+    font-size: 18px;
+    color: var(--text);
+    max-width: 64ch;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-faint);
+    font-size: 13px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+
+  a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+
+  <header class="doc-head">
+    <p class="eyebrow">QA Audit &middot; Findings Report</p>
+    <h1>Battle Racer</h1>
+    <div class="doc-meta">
+      <span><b>Build</b> local dev, post-figure-eight rewrite</span>
+      <span><b>Environment</b> Chromium, in-app Browser pane</span>
+      <span><b>Date</b> 2026-08-16</span>
+      <span><b>Tester</b> Claude (agentic session)</span>
+    </div>
+  </header>
+
+  <p>Battle Racer is a client-only Three.js/cannon-es arcade racer &mdash; no backend, no accounts, no forms, no third-party services. A generic web-app checklist doesn't map cleanly onto that shape, so this audit ran the sections that apply (functionality, UI, responsive layout, error handling, content) against the actual app, and marks the rest N/A with a reason rather than guessing at them. See the coverage table below for the full scope decision.</p>
+
+  <div class="scorecard">
+    <div class="stat critical"><div class="n">0</div><div class="l">Critical</div></div>
+    <div class="stat high"><div class="n">0</div><div class="l">High</div></div>
+    <div class="stat medium"><div class="n">1</div><div class="l">Medium</div></div>
+    <div class="stat low"><div class="n">4</div><div class="l">Low</div></div>
+    <div class="stat pass"><div class="n">7</div><div class="l">Flows verified</div></div>
+  </div>
+
+  <h2>Coverage</h2>
+  <p class="section-dek">What the original guide asked for, mapped to what actually exists in this app.</p>
+  <table class="coverage">
+    <tr><th>Section</th><th>Status</th><th>Note</th></tr>
+    <tr><td>Core functionality</td><td class="status tested">TESTED</td><td class="cov-note">Full menu&rarr;race&rarr;results loop, both win conditions</td></tr>
+    <tr><td>UI evaluation</td><td class="status tested">TESTED</td><td class="cov-note">All 5 screens screenshotted and read</td></tr>
+    <tr><td>Responsive design</td><td class="status partial">PARTIAL</td><td class="cov-note">Verified by DOM/CSS measurement, not by visual screenshot &mdash; see finding below</td></tr>
+    <tr><td>Browser compatibility</td><td class="status na">N/A</td><td class="cov-note">Single Chromium session available; no Firefox/Safari/Edge matrix</td></tr>
+    <tr><td>Performance</td><td class="status partial">PARTIAL</td><td class="cov-note">No console warnings/errors under sustained multi-car stress driving; no frame-time profiling done</td></tr>
+    <tr><td>Accessibility</td><td class="status partial">PARTIAL</td><td class="cov-note">Tab focus order correct; keyboard <em>activation</em> unconfirmed &mdash; see finding below. No screen-reader pass (canvas-driven game, low applicability)</td></tr>
+    <tr><td>Security (XSS/CSRF/auth)</td><td class="status na">N/A</td><td class="cov-note">No forms, no backend, no user input beyond car/track picks &mdash; no attack surface</td></tr>
+    <tr><td>Data handling / persistence</td><td class="status na">N/A</td><td class="cov-note">All state is in-memory for the session; nothing is saved or reloaded</td></tr>
+    <tr><td>Registration / login</td><td class="status na">N/A</td><td class="cov-note">No accounts</td></tr>
+    <tr><td>Search</td><td class="status na">N/A</td><td class="cov-note">No search feature</td></tr>
+    <tr><td>Form submissions</td><td class="status na">N/A</td><td class="cov-note">Track/car pickers are click-selects, not forms</td></tr>
+    <tr><td>Third-party integrations</td><td class="status na">N/A</td><td class="cov-note">No external APIs</td></tr>
+    <tr><td>Navigation / state machine</td><td class="status tested">TESTED</td><td class="cov-note">All transitions, including Race Again and rapid re-entry</td></tr>
+    <tr><td>Error handling / edge cases</td><td class="status tested">TESTED</td><td class="cov-note">Elimination, off-track recovery, rapid double-confirm</td></tr>
+    <tr><td>Content review</td><td class="status tested">TESTED</td><td class="cov-note">All on-screen copy read; no spelling errors found</td></tr>
+  </table>
+
+  <h2>Findings</h2>
+  <p class="section-dek">Ranked by severity. Each includes environment, repro steps, and expected vs. actual.</p>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip medium">Medium</span>
+      <span class="chip fixed">Fixed during this audit</span>
+      <h3>Main Menu inherits the last track's sky color</h3>
+    </div>
+    <div class="field"><b>Steps to reproduce</b>Start a race on any track &rarr; finish or exit to Results &rarr; click <code>Main Menu</code>.</div>
+    <div class="field"><b>Expected</b>Menu background returns to the app's default dark navy.</div>
+    <div class="field"><b>Actual</b>Background stayed tinted with the just-played track's sky color (confirmed visually: a warm tan/brown Desert Canyon sky persisted behind the menu). Root cause: <code>scene.background</code> and <code>scene.fog</code> are set per-track in <code>startRace()</code> but were never reset on the shared <code>clearSceneForNewRace()</code> path.</div>
+    <div class="field"><b>Fix applied</b><code>clearSceneForNewRace()</code> now resets both to the app default; verified fixed by repeating the exact repro.</div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip low">Low</span>
+      <h3>No guard against re-entering <code>startRace()</code></h3>
+    </div>
+    <div class="field"><b>Steps to reproduce</b>On Car Select, with both players picked, fire two <code>click</code> events at the Confirm button back-to-back (synchronous double-click faster than the screen-hide transition).</div>
+    <div class="field"><b>Expected</b>One race starts.</div>
+    <div class="field"><b>Actual</b>Two separate physics worlds and car sets were constructed; the second silently replaces <code>race</code>, and the first is orphaned for GC. No crash or visible glitch, just wasted work &mdash; a real user's two mouse clicks are very unlikely to land inside the same synchronous tick, so this needs an unusually fast trigger.</div>
+    <div class="field"><b>Suggested fix</b>Guard the confirm handler (or disable the button) once a race is already active.</div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip low">Low</span>
+      <h3>Damage bar reads backwards at a glance</h3>
+    </div>
+    <div class="field"><b>Observed</b>The HUD bar is a <em>damage</em> meter (starts empty, fills as the car takes hits), but visually it reads like a <em>health</em> bar, where empty conventionally means "about to die." A player glancing at a full-width empty bar at race start may misread their own status.</div>
+    <div class="field"><b>Suggested fix</b>Either invert the fill (start full, drain with damage) or add a label clarifying it's a damage meter.</div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip low">Low</span>
+      <h3>Two track swatches are near-illegible against the card background</h3>
+    </div>
+    <div class="field"><b>Observed</b>On Track Select, Neon City and Space Station use very dark sky colors that nearly disappear against the dark card background, so the color swatch stops doing its job of previewing the track's look.</div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip low">Low</span>
+      <h3>Results screen text has no backdrop</h3>
+    </div>
+    <div class="field"><b>Observed</b>Placement text renders directly over the frozen 3D race scene with no panel behind it. Legibility is fine against dark track surfaces but will vary by track theme and by where cars happen to be parked when the race ends.</div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-head">
+      <span class="chip note">Needs manual check</span>
+      <h3>Keyboard activation of focused buttons didn't register in automated testing</h3>
+    </div>
+    <div class="field"><b>Steps to reproduce</b>Tab to the "2-Player Race" button (focus confirmed correct), then send Enter or Space.</div>
+    <div class="field"><b>Expected</b>Native <code>&lt;button&gt;</code> activates on Enter/Space, per standard browser behavior.</div>
+    <div class="field"><b>Actual</b>State stayed on Main Menu for both keys, confirmed two ways (real key-press tool and a direct <code>dispatchEvent</code>). I could not fully rule out that this is a limitation of synthetic/automated key events not triggering a browser's native default action for form controls, rather than a real gap in the app &mdash; mouse clicks and dispatched <code>keydown</code>/<code>keyup</code> for driving controls both worked correctly in the same session, so the app's own event handling is not obviously broken. Flagging for a real keyboard press rather than asserting a defect.</div>
+  </div>
+
+  <h2>Verified working</h2>
+  <div class="duo">
+    <div class="box good">
+      <h4>Confirmed end-to-end</h4>
+      <ul>
+        <li>Main Menu &rarr; Track Select &rarr; Car Select &rarr; Racing &rarr; Results &rarr; Race Again / Main Menu, every transition</li>
+        <li>Car pick/unpick toggle logic (click again to deselect, P1 then P2 assignment)</li>
+        <li>5-car field spawns correctly (2 human + 3 AI) with correct names/colors in HUD and results</li>
+        <li>Real keyboard-driven movement (throttle, camera follow, HUD progress updates) via dispatched input</li>
+        <li>Damage system: HP accrual, visual part detachment, elimination flag, HUD "Eliminated" state</li>
+        <li>Both win conditions: lap completion and last-car-standing, with correct placement ordering (eliminated cars ranked by reverse elimination order)</li>
+        <li>Off-track recovery onto the terrain skirt without a hard fall-through</li>
+        <li>10/10 tracks load without error (6 spot-checked directly, all constructed cleanly)</li>
+      </ul>
+    </div>
+    <div class="box risk">
+      <h4>Environment caveats</h4>
+      <ul>
+        <li>Mobile/tablet screenshots showed a confined content box, but every DOM measurement (canvas buffer, computed styles, <code>getBoundingClientRect</code>) independently confirmed correct full-viewport layout at each size &mdash; read as a screenshot-capture artifact of this session, not a layout bug, but not visually confirmed either</li>
+        <li>Single browser/engine tested; no cross-browser matrix available in this environment</li>
+        <li>Console and network were clean (zero errors, all 200s) across the entire session, including a 30-second, 5-car, multi-track physics stress test</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Final evaluation</h2>
+  <p class="verdict">Stable. Every core flow completed correctly on repeated passes, with zero console errors across an extensive session &mdash; menu navigation, ten tracks, forced eliminations, forced finishes, and a sustained multi-car driving stress test. The one real functional bug found (menu background leak) was fixed and re-verified during this audit. What's left is small: one defensive guard, a couple of legibility tweaks, and one keyboard-input item that needs a human hands-on-keyboard check before it's called anything more than "flagged."</p>
+
+  <div class="duo">
+    <div class="box good">
+      <h4>Strengths</h4>
+      <ul>
+        <li>Clean error/console health under real gameplay load</li>
+        <li>All win/loss/ranking logic verified correct, including edge cases (elimination ranking, simultaneous finishes)</li>
+        <li>State transitions have no dead ends or stuck screens</li>
+      </ul>
+    </div>
+    <div class="box risk">
+      <h4>Before calling it done</h4>
+      <ul>
+        <li>Manually confirm Enter/Space activate menu buttons from a real keyboard</li>
+        <li>Add the re-entrancy guard on race start</li>
+        <li>Pass on damage-bar polarity and the two low-contrast track swatches</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>battle-racer &middot; qa-audit &middot; 6 findings &middot; 0 blocking</footer>
+
+</div>

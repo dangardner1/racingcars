@@ -14,6 +14,14 @@ const FLIP_UP_DOT_THRESHOLD = 0.2; // world-up . chassis-up; <0 means fully inve
 const STUCK_TIME_TO_RECOVER = 0.6;
 const RECOVERY_COOLDOWN = 1.0;
 
+// Wheelie correction: with only the rear axle grounded, the front (steered)
+// wheels have zero ground contact and zero steering authority, and with no
+// counter-torque a rear-wheel-drive car under throttle just keeps climbing
+// — nothing in the sim was pulling the nose back down, so a car popped up
+// this way stayed stuck and undrivable until it happened to fall back over.
+const WHEELIE_CORRECTION_GAIN = 3.5;
+const WHEELIE_CORRECTION_RATE = 0.22;
+
 /**
  * Builds a 4-wheel `CANNON.RaycastVehicle` — real front-wheel steering, and
  * raycast suspension that naturally follows hill slopes and bridge/tunnel
@@ -144,6 +152,25 @@ export function createCarPhysics(world, carMaterial, options = {}) {
       const correction = worldUp.cross(WORLD_UP).scale(2.5);
       chassisBody.angularVelocity.x += correction.x * 0.15;
       chassisBody.angularVelocity.z += correction.z * 0.15;
+    }
+
+    // One axle grounded, the other not (wheelie / nose-dive): pull pitch
+    // back toward level so the front wheels come back down and regain
+    // steering authority, regardless of which way the car is currently
+    // tipped. Gated on this specific contact pattern (not just "some tilt")
+    // so it never fights a car legitimately pitched to match a hill slope
+    // with all 4 wheels still down.
+    const frontGrounded = vehicle.wheelInfos[0].isInContact || vehicle.wheelInfos[1].isInContact;
+    const rearGrounded = vehicle.wheelInfos[2].isInContact || vehicle.wheelInfos[3].isInContact;
+    if (frontGrounded !== rearGrounded && !onLoopSurface) {
+      const carForward = chassisBody.vectorToWorldFrame(new CANNON.Vec3(1, 0, 0), new CANNON.Vec3());
+      const flatForward = new CANNON.Vec3(carForward.x, 0, carForward.z);
+      if (flatForward.lengthSquared() > 1e-6) {
+        flatForward.normalize();
+        const pitchCorrection = carForward.cross(flatForward).scale(WHEELIE_CORRECTION_GAIN);
+        chassisBody.angularVelocity.x += pitchCorrection.x * WHEELIE_CORRECTION_RATE;
+        chassisBody.angularVelocity.z += pitchCorrection.z * WHEELIE_CORRECTION_RATE;
+      }
     }
 
     recoveryCooldown = Math.max(0, recoveryCooldown - dt);
