@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Waypoints } from '../ai/Waypoints.js';
-import { roadTextureFor } from './RoadTexture.js';
+import { createAsphaltTexture, applyRoadUV } from './RoadTexture.js';
 
 const HAZARD_HIT_COOLDOWN = 1; // seconds, prevents repeated damage from one overlap
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -186,11 +186,13 @@ export class Track {
       toCannonQuat(quaternion)
     );
 
+    const geometry = new THREE.BoxGeometry(length, halfHeight * 2, width);
+    applyRoadUV(geometry, length, width);
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(length, halfHeight * 2, width),
+      geometry,
       new THREE.MeshStandardMaterial({
         color: this.groundColor,
-        map: roadTextureFor(length, width),
+        map: createAsphaltTexture(),
         roughness: 0.95,
       })
     );
@@ -213,9 +215,11 @@ export class Track {
       toCannonQuat(quaternion)
     );
 
+    const deckGeometry = new THREE.BoxGeometry(length, halfHeight * 2, width);
+    applyRoadUV(deckGeometry, length, width);
     const deckMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(length, halfHeight * 2, width),
-      new THREE.MeshStandardMaterial({ color: 0x8a7a68, map: roadTextureFor(length, width), roughness: 0.9 })
+      deckGeometry,
+      new THREE.MeshStandardMaterial({ color: 0x8a7a68, map: createAsphaltTexture(), roughness: 0.9 })
     );
     deckMesh.position.copy(bodyCenter);
     deckMesh.quaternion.copy(quaternion);

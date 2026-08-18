@@ -42,10 +42,27 @@ export function createAsphaltTexture() {
   return texture;
 }
 
-/** A texture instance sized so it tiles at roughly `tileSize` world units. */
-export function roadTextureFor(length, width, tileSize = 6) {
-  const tex = createAsphaltTexture().clone();
-  tex.needsUpdate = true;
-  tex.repeat.set(Math.max(1, length / tileSize), Math.max(1, width / tileSize));
-  return tex;
+/**
+ * Scales a BoxGeometry's UVs so the single shared asphalt texture tiles at
+ * roughly `tileSize` world units, without allocating a per-mesh texture.
+ *
+ * Previously every road segment got its own `texture.clone()` with
+ * `needsUpdate = true` forced, so every one of the ~100+ segments on a
+ * figure-eight track (built synchronously inside the "Start Race" click
+ * handler) triggered its own full GPU texture upload of identical pixel
+ * data — a real contributor to that handler blocking the main thread long
+ * enough to show up as a slow-interaction (INP) warning. Scaling UVs
+ * instead reuses one texture for the whole track. This applies the same
+ * repeat uniformly to all 6 box faces (as `texture.repeat` did before too),
+ * so side-face tiling on these thin road slabs is an approximation exactly
+ * like it was previously — no visual regression, just no redundant uploads.
+ */
+export function applyRoadUV(geometry, length, width, tileSize = 6) {
+  const repeatX = Math.max(1, length / tileSize);
+  const repeatY = Math.max(1, width / tileSize);
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, uv.getX(i) * repeatX, uv.getY(i) * repeatY);
+  }
+  uv.needsUpdate = true;
 }

@@ -12,13 +12,23 @@ export function createResultsScreen(container, { onRaceAgain, onMainMenu }) {
   container.appendChild(el);
 
   const list = el.querySelector('#results-list');
-  el.querySelector('#race-again-btn').addEventListener('click', onRaceAgain);
+  const raceAgainBtn = el.querySelector('#race-again-btn');
+  raceAgainBtn.addEventListener('click', () => {
+    // Same deferred-work pattern as Car Select's Start Race button — this
+    // also triggers a full track/car rebuild, so it gets the same
+    // paint-before-blocking treatment.
+    raceAgainBtn.disabled = true;
+    raceAgainBtn.textContent = 'Loading…';
+    setTimeout(onRaceAgain, 0);
+  });
   el.querySelector('#main-menu-btn').addEventListener('click', onMainMenu);
 
   return {
     el,
     show: (placements) => {
       list.innerHTML = placements.map((name) => `<li>${name}</li>`).join('');
+      raceAgainBtn.disabled = false;
+      raceAgainBtn.textContent = 'Race Again';
       el.style.display = 'flex';
     },
     hide: () => { el.style.display = 'none'; },

@@ -43,7 +43,16 @@ export function createCarSelect(container, carDefs, { onConfirm }) {
   }
 
   confirmBtn.addEventListener('click', () => {
-    if (p1 && p2) onConfirm(p1, p2);
+    if (!(p1 && p2)) return;
+    // Building the race (physics world + a ~100+ segment track + 5 cars) is
+    // heavy enough to block the main thread for a couple hundred ms. Giving
+    // immediate visual feedback and deferring that work to a macrotask lets
+    // the disabled/loading state actually paint first, instead of the
+    // click handler itself blocking the next paint — the thing an
+    // Interaction to Next Paint warning flags.
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Loading…';
+    setTimeout(() => onConfirm(p1, p2), 0);
   });
 
   return {
@@ -51,6 +60,7 @@ export function createCarSelect(container, carDefs, { onConfirm }) {
     show: () => {
       p1 = null;
       p2 = null;
+      confirmBtn.textContent = 'Start Race';
       render();
       el.style.display = 'flex';
     },
