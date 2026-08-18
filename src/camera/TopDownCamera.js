@@ -33,6 +33,7 @@ export class TopDownCamera {
     this.camZ = 0;
     this.back = BASE_BACK; // smoothed camera distance; height is derived from this each frame
     this.trauma = 0;
+    this.initialized = false;
   }
 
   /** Adds screen shake, e.g. on a hard crash. Clamped so repeated big hits
@@ -60,11 +61,23 @@ export class TopDownCamera {
     const requiredBack = requiredSlant / slantPerBack;
     const targetBack = Math.max(BASE_BACK, requiredBack);
 
-    const lerpFactor = 1 - Math.exp(-SMOOTHING * dt);
-    this.camX += (midX - this.camX) * lerpFactor;
-    this.camY += (midY - this.camY) * lerpFactor;
-    this.camZ += (midZ - this.camZ) * lerpFactor;
-    this.back += (targetBack - this.back) * lerpFactor;
+    if (!this.initialized) {
+      // First frame: snap straight to the target instead of lerping in from
+      // the constructor's (0,0,0) default, which otherwise left both
+      // players outside the frustum for the race's opening half-second
+      // while the camera caught up from the world origin.
+      this.camX = midX;
+      this.camY = midY;
+      this.camZ = midZ;
+      this.back = targetBack;
+      this.initialized = true;
+    } else {
+      const lerpFactor = 1 - Math.exp(-SMOOTHING * dt);
+      this.camX += (midX - this.camX) * lerpFactor;
+      this.camY += (midY - this.camY) * lerpFactor;
+      this.camZ += (midZ - this.camZ) * lerpFactor;
+      this.back += (targetBack - this.back) * lerpFactor;
+    }
 
     const back = this.back;
     const height = back * HEIGHT_TO_BACK_RATIO;
