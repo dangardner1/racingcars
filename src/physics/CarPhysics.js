@@ -2,7 +2,7 @@ import * as CANNON from 'cannon-es';
 
 const WHEEL_RADIUS = 0.4;
 const MAX_STEER = 0.8; // radians (~45.8deg) at a dead stop, eased down at high speed
-const STEER_SPEED_FALLOFF = 0.4; // fraction of MAX_STEER shed by the time the car hits topSpeed
+const STEER_SPEED_FALLOFF = 0.22; // fraction of MAX_STEER shed by the time the car hits topSpeed
 const STEER_RATE = 12; // rad/sec the wheel angle can move — keyboard input is on/off, this is what keeps it from snapping to full lock in one frame
 const WORLD_UP = new CANNON.Vec3(0, 1, 0);
 
@@ -84,7 +84,7 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     dampingCompression: 7,
     maxSuspensionForce: 1e5,
     maxSuspensionTravel: 0.3,
-    frictionSlip: 5.5,
+    frictionSlip: 6.5,
     rollInfluence: 0.05,
   };
 
