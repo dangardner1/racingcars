@@ -147,14 +147,6 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     const brakeForce = handbrake ? maxBrakeForce : drive === 0 ? maxEngineForce * 0.15 : 0;
     for (let i = 0; i < 4; i++) vehicle.setBrake(i >= 2 ? brakeForce : brakeForce * 0.5, i);
 
-    // A car riding a full loop hazard needs to rotate freely through a full
-    // 360° — flip-recovery (which treats a tilted, near-stationary car as
-    // stuck) would otherwise fight that legitimate rotation. Track.js sets
-    // this flag via a collide listener on the loop body; consumed and
-    // cleared here so it reflects "touched last step".
-    const onLoopSurface = chassisBody.userData?.touchingLoop === true;
-    if (chassisBody.userData) chassisBody.userData.touchingLoop = false;
-
     // Consume a fresh wall-bounce tangent hint from Track.js's guardrail
     // collide listener (stamped only on an actual hit, so this stays null
     // most of the time) and (re)start the correction window.
@@ -185,7 +177,7 @@ export function createCarPhysics(world, carMaterial, options = {}) {
 
     // Gentle airborne stabilization so a jump doesn't turn into an
     // uncontrolled tumble — nudges (doesn't snap) the chassis level.
-    if (airborne && !onLoopSurface) {
+    if (airborne) {
       const correction = worldUp.cross(WORLD_UP).scale(2.5);
       chassisBody.angularVelocity.x += correction.x * 0.15;
       chassisBody.angularVelocity.z += correction.z * 0.15;
@@ -199,7 +191,7 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     // with all 4 wheels still down.
     const frontGrounded = vehicle.wheelInfos[0].isInContact || vehicle.wheelInfos[1].isInContact;
     const rearGrounded = vehicle.wheelInfos[2].isInContact || vehicle.wheelInfos[3].isInContact;
-    if (frontGrounded !== rearGrounded && !onLoopSurface) {
+    if (frontGrounded !== rearGrounded) {
       const carForward = chassisBody.vectorToWorldFrame(new CANNON.Vec3(1, 0, 0), new CANNON.Vec3());
       const flatForward = new CANNON.Vec3(carForward.x, 0, carForward.z);
       if (flatForward.lengthSquared() > 1e-6) {
@@ -212,7 +204,7 @@ export function createCarPhysics(world, carMaterial, options = {}) {
 
     recoveryCooldown = Math.max(0, recoveryCooldown - dt);
     const angSpeed = chassisBody.angularVelocity.length();
-    const isFlippedAndStill = !onLoopSurface && upDot < FLIP_UP_DOT_THRESHOLD && Math.abs(speed) < 1.5 && angSpeed < 1.5;
+    const isFlippedAndStill = upDot < FLIP_UP_DOT_THRESHOLD && Math.abs(speed) < 1.5 && angSpeed < 1.5;
     // Distinct from "flipped": a car can catch a guardrail (or any curb-
     // like edge) and end up jammed sideways against it with all 4 wheels
     // still grounded — no amount of wheel-contact checking catches that,
@@ -225,7 +217,7 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     // legitimately parked (an untouched car has drive === 0 and never
     // triggers this). A tighter speed threshold than the flip case, since
     // "blocked" should mean genuinely near-zero progress, not just slow.
-    const isBlockedWhileDriving = !onLoopSurface && drive !== 0 && Math.abs(speed) < 0.8 && angSpeed < 1.5;
+    const isBlockedWhileDriving = drive !== 0 && Math.abs(speed) < 0.8 && angSpeed < 1.5;
     const isStuck = isFlippedAndStill || isBlockedWhileDriving;
 
     if (recoveryCooldown <= 0 && isStuck) {

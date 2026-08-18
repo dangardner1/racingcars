@@ -118,8 +118,8 @@ function startRace(trackData, p1Def, p2Def) {
   soundManager.stopAllEngines();
   clearSceneForNewRace();
 
-  const { world, groundMaterial, carMaterial, loopMaterial } = createPhysicsWorld();
-  const track = new Track(world, scene, groundMaterial, trackData, loopMaterial);
+  const { world, groundMaterial, carMaterial } = createPhysicsWorld();
+  const track = new Track(world, scene, groundMaterial, trackData);
   scene.background = new THREE.Color(track.skyColor);
   scene.fog = new THREE.Fog(track.fogColor, 60, 220);
   soundManager.startAmbient(track.data.theme);

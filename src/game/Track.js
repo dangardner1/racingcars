@@ -43,11 +43,10 @@ function toCannonQuat(q) {
  * than a bare X, with orientation derived from the local path tangent.
  */
 export class Track {
-  constructor(world, scene, groundMaterial, data, loopMaterial) {
+  constructor(world, scene, groundMaterial, data) {
     this.world = world;
     this.scene = scene;
     this.groundMaterial = groundMaterial;
-    this.loopMaterial = loopMaterial ?? groundMaterial;
     this.data = data;
     this.crumblingBridges = [];
     this.lastHazardHit = new WeakMap();
@@ -68,7 +67,6 @@ export class Track {
 
     this._buildTerrainSkirt();
     this._buildGround();
-    this._buildFeatures();
     this._buildHazards();
     this._buildSafetyFloor();
     this._buildDirectionArrows();
@@ -170,8 +168,8 @@ export class Track {
    * spanning two differently-angled segments (inevitable on a curved path
    * — the wheelbase is comparable to a single segment's length) got
    * contradictory contact resolution at the seam and could catch, bounce,
-   * or fall through — the same "tiled terrain seam" failure the loop
-   * feature below was already written to avoid with a compound body.
+   * or fall through — the same "tiled terrain seam" failure a naive
+   * per-segment body layout is prone to.
    */
   _buildGround() {
     this.groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.groundMaterial });
@@ -212,9 +210,10 @@ export class Track {
    * Thin vertical walls along both edges of a road span — the "guard
    * rails" that keep a car from driving/bouncing off the side of the
    * track. Shapes go on the same compound groundBody as everything else
-   * (not their own bodies) for the same reason the loop ring is one
-   * compound body: independent bodies at a seam produce contradictory
-   * contact resolution a fast car can catch or wedge against. Registered
+   * (not their own bodies) — independent bodies at a seam produce
+   * contradictory contact resolution a fast car can catch or wedge
+   * against, the same "tiled terrain seam" issue _buildGround() avoids
+   * for the road surface itself. Registered
    * in railShapes so the collide listener in _buildGround() can tell a
    * wall hit apart from a road-surface hit.
    */
@@ -407,76 +406,6 @@ export class Track {
     bridge.body.wakeUp();
   }
 
-  _buildFeatures() {
-    for (const feature of this.data.features ?? []) {
-      if (feature.type === 'loop') this._buildLoop(feature);
-    }
-  }
-
-  /**
-   * A single compound body (many shapes on one Body), not one Body per
-   * ring segment, so a fast car touching 2-3 of them at once doesn't get
-   * contradictory contact resolution from the solver. Built in the plane
-   * containing the path's forward and up vectors at `atIndex`, so it reads
-   * as a loop-the-loop in the car's direction of travel; angle=0 is the
-   * bottom, tangent to the road so incoming track connects smoothly.
-   */
-  _buildLoop(feature) {
-    const segCount = feature.segCount ?? 32;
-    const radius = feature.radius;
-    const width = feature.width ?? this.data.path[feature.atIndex]?.width ?? 10;
-    const { forward, up, right } = this._hazardFrame(feature.atIndex, 1);
-    const nodePos = this._pathNode(feature.atIndex);
-    const ringCenter = new THREE.Vector3().copy(nodePos).addScaledVector(up, radius);
-    const thickness = (2 * Math.PI * radius) / segCount;
-    // Track "wall" radial thickness scales with radius instead of a fixed
-    // 0.6 — on a small loop, a fixed 0.6 half-extent is a huge fraction of
-    // the radius and makes segments protrude much further into the car's
-    // approach path than the visual ring suggests.
-    const radialHalfExtent = Math.max(0.15, Math.min(0.6, radius * 0.1));
-
-    const loopBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.loopMaterial });
-    const shape = new CANNON.Box(new CANNON.Vec3(thickness * 0.85, radialHalfExtent, width / 2));
-
-    for (let i = 0; i < segCount; i++) {
-      const angle = (i / segCount) * Math.PI * 2;
-      const localOffset = new THREE.Vector3()
-        .addScaledVector(forward, Math.sin(angle) * radius)
-        .addScaledVector(up, -Math.cos(angle) * radius);
-      const ringTangent = new THREE.Vector3()
-        .addScaledVector(forward, Math.cos(angle))
-        .addScaledVector(up, Math.sin(angle))
-        .normalize();
-      const ringRadial = new THREE.Vector3()
-        .addScaledVector(forward, Math.sin(angle))
-        .addScaledVector(up, -Math.cos(angle))
-        .normalize();
-      const segQuat = new THREE.Quaternion().setFromRotationMatrix(
-        new THREE.Matrix4().makeBasis(ringTangent, ringRadial, right)
-      );
-      loopBody.addShape(shape, toCannonVec(localOffset), toCannonQuat(segQuat));
-
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(thickness * 1.7, radialHalfExtent * 2, width),
-        new THREE.MeshStandardMaterial({ color: this.groundColor.clone().offsetHSL(0, 0, 0.15) })
-      );
-      mesh.position.copy(ringCenter).add(localOffset);
-      mesh.quaternion.copy(segQuat);
-      this.scene.add(mesh);
-    }
-
-    loopBody.position.copy(toCannonVec(ringCenter));
-    this.world.addBody(loopBody);
-
-    // Marks the car as "on the loop" so CarPhysics can suspend flip-recovery
-    // — which would otherwise fight the legitimate full-360° rotation a
-    // loop requires.
-    loopBody.addEventListener('collide', (event) => {
-      const car = event.body.userData?.car;
-      if (car) car.physics.chassisBody.userData.touchingLoop = true;
-    });
-  }
-
   _buildHazards() {
     for (const hazard of this.data.hazards ?? []) {
       if (hazard.type === 'spikePit') this._buildSpikePit(hazard);
@@ -532,8 +461,8 @@ export class Track {
 
   /**
    * Sets a car's forward speed to a fixed target on contact, regardless of
-   * its own topSpeed stat. Used ahead of hazards (like the loop) that need
-   * more entry speed than every car's own drivetrain can reach.
+   * its own topSpeed stat — a speed burst independent of what a car's own
+   * drivetrain can reach.
    */
   _buildBoostPad(hazard) {
     const span = hazard.spanNodes ?? 1;

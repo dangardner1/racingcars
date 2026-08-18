@@ -19,25 +19,25 @@ const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'sr
 
 const THEMES = [
   { file: 'track01', id: 'track01', theme: 'desert_canyon', sky: '#e8a95c', fog: '#e8a95c', ground: '#8a6338',
-    scale: 1.0, hillAmp: 3.5, bridgeHeight: 8.5, pitDamage: 15, bridgeHits: 2, loopRadius: 8, boostSpeed: 26 },
+    scale: 1.0, hillAmp: 3.5, bridgeHeight: 8.5, pitDamage: 15, bridgeHits: 2, boostSpeed: 26 },
   { file: 'track02', id: 'track02', theme: 'volcano', sky: '#c94e2d', fog: '#a03a24', ground: '#4a2318',
-    scale: 1.05, hillAmp: 4.5, bridgeHeight: 9, pitDamage: 16, bridgeHits: 2, loopRadius: 8.5, boostSpeed: 26 },
+    scale: 1.05, hillAmp: 4.5, bridgeHeight: 9, pitDamage: 16, bridgeHits: 2, boostSpeed: 26 },
   { file: 'track03', id: 'track03', theme: 'ice_glacier', sky: '#bfe6f5', fog: '#d8f0fa', ground: '#e8f6fb',
-    scale: 0.92, hillAmp: 2.5, bridgeHeight: 7.5, pitDamage: 11, bridgeHits: 3, loopRadius: 7.5, boostSpeed: 24 },
+    scale: 0.92, hillAmp: 2.5, bridgeHeight: 7.5, pitDamage: 11, bridgeHits: 3, boostSpeed: 24 },
   { file: 'track04', id: 'track04', theme: 'neon_city', sky: '#1a1030', fog: '#241640', ground: '#2c2c3a',
-    scale: 1.1, hillAmp: 2, bridgeHeight: 10, pitDamage: 14, bridgeHits: 2, loopRadius: 9, boostSpeed: 27 },
+    scale: 1.1, hillAmp: 2, bridgeHeight: 10, pitDamage: 14, bridgeHits: 2, boostSpeed: 27 },
   { file: 'track05', id: 'track05', theme: 'junkyard', sky: '#8a8a6a', fog: '#75755a', ground: '#5a4f3a',
-    scale: 0.9, hillAmp: 4, bridgeHeight: 8, pitDamage: 13, bridgeHits: 2, loopRadius: 7, boostSpeed: 25 },
+    scale: 0.9, hillAmp: 4, bridgeHeight: 8, pitDamage: 13, bridgeHits: 2, boostSpeed: 25 },
   { file: 'track06', id: 'track06', theme: 'jungle_ruins', sky: '#3f7d4a', fog: '#2f6238', ground: '#4a3a24',
-    scale: 1.0, hillAmp: 5, bridgeHeight: 8.5, pitDamage: 14, bridgeHits: 3, loopRadius: 8, boostSpeed: 26 },
+    scale: 1.0, hillAmp: 5, bridgeHeight: 8.5, pitDamage: 14, bridgeHits: 3, boostSpeed: 26 },
   { file: 'track07', id: 'track07', theme: 'construction_site', sky: '#d9c27a', fog: '#c9b164', ground: '#8a7a52',
-    scale: 1.05, hillAmp: 3, bridgeHeight: 9.5, pitDamage: 15, bridgeHits: 2, loopRadius: 8.5, boostSpeed: 26 },
+    scale: 1.05, hillAmp: 3, bridgeHeight: 9.5, pitDamage: 15, bridgeHits: 2, boostSpeed: 26 },
   { file: 'track08', id: 'track08', theme: 'space_station', sky: '#0a0a1a', fog: '#12122a', ground: '#3a3a4e',
-    scale: 1.15, hillAmp: 1.5, bridgeHeight: 11, pitDamage: 12, bridgeHits: 2, loopRadius: 9.5, boostSpeed: 28 },
+    scale: 1.15, hillAmp: 1.5, bridgeHeight: 11, pitDamage: 12, bridgeHits: 2, boostSpeed: 28 },
   { file: 'track09', id: 'track09', theme: 'storm_coast', sky: '#4a5a66', fog: '#3a4852', ground: '#425058',
-    scale: 0.95, hillAmp: 3.5, bridgeHeight: 8, pitDamage: 15, bridgeHits: 2, loopRadius: 7.8, boostSpeed: 26 },
+    scale: 0.95, hillAmp: 3.5, bridgeHeight: 8, pitDamage: 15, bridgeHits: 2, boostSpeed: 26 },
   { file: 'track10', id: 'track10', theme: 'haunted_circuit', sky: '#241a2e', fog: '#1a1220', ground: '#2e2438',
-    scale: 1.0, hillAmp: 4, bridgeHeight: 8.5, pitDamage: 16, bridgeHits: 2, loopRadius: 8, boostSpeed: 26 },
+    scale: 1.0, hillAmp: 4, bridgeHeight: 8.5, pitDamage: 16, bridgeHits: 2, boostSpeed: 26 },
 ];
 
 const N = 120; // path nodes around the whole figure-eight
@@ -49,7 +49,6 @@ const CROSSING_SIGMA = 0.16;
 // clear of both crossing windows (~+-7 nodes around index 0 and N/2).
 const START_FRAC = 0.15;
 const BOOST_FRAC = 0.365;
-const LOOP_FRAC = 0.40;
 const PIT_FRAC = 0.63;
 const CRUMBLE_FRAC = 0.85;
 
@@ -89,7 +88,6 @@ function buildTrack(t_) {
   }
 
   const idx = (frac) => Math.round(N * frac);
-  const loopIdx = idx(LOOP_FRAC);
   const boostIdx = idx(BOOST_FRAC);
   const pitIdx = idx(PIT_FRAC);
   const crumbleIdx = idx(CRUMBLE_FRAC);
@@ -98,7 +96,7 @@ function buildTrack(t_) {
   // A spike pit: road stays solid here (guard rails included), spikes
   // just protrude up from the surface and damage on contact — no gap in
   // the track for a car to fall through.
-  // A separate at-grade crumbling bridge elsewhere on the loop.
+  // A separate at-grade crumbling bridge elsewhere on the circuit.
   path[crumbleIdx].type = 'crumblingBridge';
   path[(crumbleIdx + 1) % N].type = 'crumblingBridge';
 
@@ -109,7 +107,6 @@ function buildTrack(t_) {
     fogColor: t_.fog,
     groundColor: t_.ground,
     path,
-    features: [{ type: 'loop', atIndex: loopIdx, radius: t_.loopRadius, segCount: 28 }],
     hazards: [
       { type: 'boostPad', atIndex: boostIdx, spanNodes: 2, speed: t_.boostSpeed },
       { type: 'spikePit', atIndex: pitIdx, spanNodes: 1, damage: t_.pitDamage },

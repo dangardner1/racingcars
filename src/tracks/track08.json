@@ -846,14 +846,6 @@
       "type": "tunnel"
     }
   ],
-  "features": [
-    {
-      "type": "loop",
-      "atIndex": 48,
-      "radius": 9.5,
-      "segCount": 28
-    }
-  ],
   "hazards": [
     {
       "type": "boostPad",
