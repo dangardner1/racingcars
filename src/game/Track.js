@@ -52,6 +52,11 @@ export class Track {
     this.movingPlatforms = [];
     this.crumblingBridges = [];
     this.lastHazardHit = new WeakMap();
+    // Shapes belonging to guardrails/tunnel walls, tagged so the collision
+    // listener added at the end of _buildGround() can tell "hit a wall"
+    // apart from "hit the road surface" even though both live on the same
+    // compound groundBody.
+    this.railShapes = new Set();
     this.elapsed = 0;
 
     this.groundColor = new THREE.Color(data.groundColor ?? '#3a3a3a');
@@ -170,10 +175,57 @@ export class Track {
     }
 
     this.world.addBody(this.groundBody);
+
+    // One listener for the whole compound body: distinguishes "hit a rail/
+    // wall" from "hit the drivable surface" by checking which of the two
+    // shapes in contact is tagged in railShapes, then hands CarPhysics the
+    // car's current track tangent so it can nudge the car's yaw back
+    // toward facing along the track instead of leaving it spun at whatever
+    // angle the bounce happened to produce.
+    this.groundBody.addEventListener('collide', (event) => {
+      const car = event.body.userData?.car;
+      if (!car || !car.trackState) return;
+      const contact = event.contact;
+      const myShape = contact.bi === this.groundBody ? contact.si : contact.sj;
+      if (!this.railShapes.has(myShape)) return;
+      car.physics.chassisBody.userData.wallBounceTangent = car.trackState.tangent.clone();
+    });
   }
 
-  _buildFlat(a, b, width) {
-    const { center, quaternion, length, up } = segmentBasis(a, b);
+  /**
+   * Thin vertical walls along both edges of a road span — the "guard
+   * rails" that keep a car from driving/bouncing off the side of the
+   * track. Shapes go on the same compound groundBody as everything else
+   * (not their own bodies) for the same reason the loop ring is one
+   * compound body: independent bodies at a seam produce contradictory
+   * contact resolution a fast car can catch or wedge against. Registered
+   * in railShapes so the collide listener in _buildGround() can tell a
+   * wall hit apart from a road-surface hit.
+   */
+  _addGuardrail(center, right, up, quaternion, length, halfWidth, railHeight = 0.6) {
+    const railThickness = 0.15;
+    for (const side of [-1, 1]) {
+      const railCenter = new THREE.Vector3()
+        .copy(center)
+        .addScaledVector(right, side * halfWidth)
+        .addScaledVector(up, railHeight / 2);
+      const shape = new CANNON.Box(new CANNON.Vec3(length / 2, railHeight / 2, railThickness));
+      this.groundBody.addShape(shape, toCannonVec(railCenter), toCannonQuat(quaternion));
+      this.railShapes.add(shape);
+
+      const railMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(length, railHeight, railThickness * 2),
+        new THREE.MeshStandardMaterial({ color: 0x9a8a70 })
+      );
+      railMesh.position.copy(railCenter);
+      railMesh.quaternion.copy(quaternion);
+      railMesh.castShadow = true;
+      this.scene.add(railMesh);
+    }
+  }
+
+  _buildFlat(a, b, width, { skipGuardrail = false } = {}) {
+    const { center, quaternion, length, up, right } = segmentBasis(a, b);
     // Half-height is generously thick (not a thin slab) so a fast-moving
     // car can't tunnel through it in a single physics step.
     const halfHeight = 2;
@@ -200,6 +252,12 @@ export class Track {
     mesh.quaternion.copy(quaternion);
     mesh.receiveShadow = true;
     this.scene.add(mesh);
+
+    // Tunnels delegate their road slab to this method but build their own,
+    // taller side walls (which also get tagged into railShapes) — skip the
+    // road-height guardrail there to avoid two overlapping barriers at the
+    // same edge.
+    if (!skipGuardrail) this._addGuardrail(center, right, up, quaternion, length, halfWidth);
   }
 
   /** Elevated deck with side guardrails + support pillars — crosses OVER a gap or another path span. */
@@ -226,27 +284,7 @@ export class Track {
     deckMesh.receiveShadow = true;
     this.scene.add(deckMesh);
 
-    const railHeight = 0.7;
-    for (const side of [-1, 1]) {
-      const railCenter = new THREE.Vector3()
-        .copy(center)
-        .addScaledVector(right, side * halfWidth)
-        .addScaledVector(up, railHeight / 2);
-      this.groundBody.addShape(
-        new CANNON.Box(new CANNON.Vec3(length / 2, railHeight / 2, 0.15)),
-        toCannonVec(railCenter),
-        toCannonQuat(quaternion)
-      );
-
-      const railMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(length, railHeight, 0.3),
-        new THREE.MeshStandardMaterial({ color: 0x9a8a70 })
-      );
-      railMesh.position.copy(railCenter);
-      railMesh.quaternion.copy(quaternion);
-      railMesh.castShadow = true;
-      this.scene.add(railMesh);
-    }
+    this._addGuardrail(center, right, up, quaternion, length, halfWidth, 0.7);
 
     // Purely visual support pillars down to the ground, only when the deck is actually elevated.
     if (center.y > 1.5) {
@@ -265,7 +303,7 @@ export class Track {
 
   /** Road slab plus an arched roof + side walls above it — ducks UNDER a bridge at the crossing. */
   _buildTunnel(a, b, width, node) {
-    this._buildFlat(a, b, width);
+    this._buildFlat(a, b, width, { skipGuardrail: true });
     const { center, quaternion, length, up, right } = segmentBasis(a, b);
     const halfWidth = width / 2;
     const clearance = 3.4; // vehicle clearance height inside the tunnel
@@ -293,11 +331,9 @@ export class Track {
         .copy(center)
         .addScaledVector(right, side * (halfWidth + wallThickness / 2))
         .addScaledVector(up, clearance / 2);
-      this.groundBody.addShape(
-        new CANNON.Box(new CANNON.Vec3(length / 2, clearance / 2, wallThickness / 2)),
-        toCannonVec(wallCenter),
-        toCannonQuat(quaternion)
-      );
+      const wallShape = new CANNON.Box(new CANNON.Vec3(length / 2, clearance / 2, wallThickness / 2));
+      this.groundBody.addShape(wallShape, toCannonVec(wallCenter), toCannonQuat(quaternion));
+      this.railShapes.add(wallShape);
 
       const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(length, clearance, wallThickness), tunnelMat);
       wallMesh.position.copy(wallCenter);

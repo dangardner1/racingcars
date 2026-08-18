@@ -22,6 +22,17 @@ const RECOVERY_COOLDOWN = 1.0;
 const WHEELIE_CORRECTION_GAIN = 3.5;
 const WHEELIE_CORRECTION_RATE = 0.22;
 
+// Wall-bounce reorientation: hitting a guardrail at an angle leaves the car
+// spun to whatever the collision response happened to produce, which reads
+// as disorienting rather than as feedback about which way to go. For a
+// short window after a rail hit (Track.js's collide listener stamps the
+// car's current track tangent), nudge yaw back toward facing along the
+// track — same gradual spring-not-snap approach as the wheelie correction
+// above, not an instant reorientation.
+const WALL_BOUNCE_CORRECTION_DURATION = 1.2; // seconds the nudge stays active after a hit
+const WALL_BOUNCE_CORRECTION_GAIN = 2.5;
+const WALL_BOUNCE_CORRECTION_RATE = 0.2;
+
 /**
  * Builds a 4-wheel `CANNON.RaycastVehicle` — real front-wheel steering, and
  * raycast suspension that naturally follows hill slopes and bridge/tunnel
@@ -101,6 +112,8 @@ export function createCarPhysics(world, carMaterial, options = {}) {
   let stuckTimer = 0;
   let recoveryCooldown = 0;
   let currentSteerAngle = 0;
+  let wallBounceTimer = 0;
+  let wallBounceTangent = null;
 
   function forwardSpeed() {
     const forward = chassisBody.vectorToWorldFrame(new CANNON.Vec3(1, 0, 0), new CANNON.Vec3());
@@ -142,6 +155,30 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     const onLoopSurface = chassisBody.userData?.touchingLoop === true;
     if (chassisBody.userData) chassisBody.userData.touchingLoop = false;
 
+    // Consume a fresh wall-bounce tangent hint from Track.js's guardrail
+    // collide listener (stamped only on an actual hit, so this stays null
+    // most of the time) and (re)start the correction window.
+    if (chassisBody.userData?.wallBounceTangent) {
+      wallBounceTangent = chassisBody.userData.wallBounceTangent;
+      wallBounceTimer = WALL_BOUNCE_CORRECTION_DURATION;
+      chassisBody.userData.wallBounceTangent = null;
+    }
+    if (wallBounceTimer > 0) {
+      wallBounceTimer = Math.max(0, wallBounceTimer - dt);
+      const carForward = chassisBody.vectorToWorldFrame(new CANNON.Vec3(1, 0, 0), new CANNON.Vec3());
+      const flatForward = new CANNON.Vec3(carForward.x, 0, carForward.z);
+      const flatTangent = new CANNON.Vec3(wallBounceTangent.x, 0, wallBounceTangent.z);
+      if (flatForward.lengthSquared() > 1e-6 && flatTangent.lengthSquared() > 1e-6) {
+        flatForward.normalize();
+        flatTangent.normalize();
+        // Signed yaw error (small-angle) between current heading and the
+        // track direction at the point of impact — same cross-product
+        // technique the wheelie correction below uses for pitch.
+        const yawError = flatForward.cross(flatTangent);
+        chassisBody.angularVelocity.y += yawError.y * WALL_BOUNCE_CORRECTION_GAIN * WALL_BOUNCE_CORRECTION_RATE;
+      }
+    }
+
     const airborne = vehicle.numWheelsOnGround === 0;
     const worldUp = chassisBody.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
     const upDot = worldUp.dot(WORLD_UP);
@@ -176,8 +213,22 @@ export function createCarPhysics(world, carMaterial, options = {}) {
     recoveryCooldown = Math.max(0, recoveryCooldown - dt);
     const angSpeed = chassisBody.angularVelocity.length();
     const isFlippedAndStill = !onLoopSurface && upDot < FLIP_UP_DOT_THRESHOLD && Math.abs(speed) < 1.5 && angSpeed < 1.5;
+    // Distinct from "flipped": a car can catch a guardrail (or any curb-
+    // like edge) and end up jammed sideways against it with all 4 wheels
+    // still grounded — no amount of wheel-contact checking catches that,
+    // since by definition nothing's off the ground; the wheels just spin
+    // in place, unable to generate enough lateral force to slide free.
+    // What actually distinguishes "stuck" from "idle" is whether the
+    // player/AI is actively trying to move: throttle or brake held (drive
+    // !== 0) with essentially zero forward progress for a sustained time
+    // means something is physically blocking the car, not that it's
+    // legitimately parked (an untouched car has drive === 0 and never
+    // triggers this). A tighter speed threshold than the flip case, since
+    // "blocked" should mean genuinely near-zero progress, not just slow.
+    const isBlockedWhileDriving = !onLoopSurface && drive !== 0 && Math.abs(speed) < 0.8 && angSpeed < 1.5;
+    const isStuck = isFlippedAndStill || isBlockedWhileDriving;
 
-    if (recoveryCooldown <= 0 && isFlippedAndStill) {
+    if (recoveryCooldown <= 0 && isStuck) {
       stuckTimer += dt;
     } else if (recoveryCooldown <= 0) {
       stuckTimer = 0;
