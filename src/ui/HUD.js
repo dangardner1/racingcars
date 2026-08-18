@@ -1,7 +1,8 @@
-export function createHUD(container) {
+export function createHUD(container, { onExit } = {}) {
   const el = document.createElement('div');
   el.className = 'screen hud';
   el.innerHTML = `
+    <button class="hud-exit-btn" id="hud-exit-btn" title="Quit to Main Menu">Exit</button>
     <div class="hud-panel hud-p1">
       <div class="hud-name">Player 1</div>
       <div class="hud-bar"><div class="hud-bar-fill" id="hud-p1-bar"></div></div>
@@ -16,6 +17,8 @@ export function createHUD(container) {
   `;
   container.appendChild(el);
   el.style.display = 'none';
+
+  el.querySelector('#hud-exit-btn').addEventListener('click', () => onExit?.());
 
   const p1Bar = el.querySelector('#hud-p1-bar');
   const p2Bar = el.querySelector('#hud-p2-bar');

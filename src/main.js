@@ -210,18 +210,20 @@ const carSelect = createCarSelect(uiRoot, CAR_DEFS, {
     startRace(gameState.selection.trackData, p1Def, p2Def);
   },
 });
-const hud = createHUD(uiRoot);
+function exitToMainMenu() {
+  soundManager.stopAllEngines();
+  clearSceneForNewRace();
+  race = null;
+  gameState.set(States.MAIN_MENU);
+}
+
+const hud = createHUD(uiRoot, { onExit: exitToMainMenu });
 const resultsScreen = createResultsScreen(uiRoot, {
   onRaceAgain: () => {
     const { trackData, p1Def, p2Def } = gameState.selection;
     startRace(trackData, p1Def, p2Def);
   },
-  onMainMenu: () => {
-    soundManager.stopAllEngines();
-    clearSceneForNewRace();
-    race = null;
-    gameState.set(States.MAIN_MENU);
-  },
+  onMainMenu: exitToMainMenu,
 });
 
 const screens = { mainMenu, trackSelect, carSelect, resultsScreen };

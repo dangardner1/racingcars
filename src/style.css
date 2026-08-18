@@ -116,6 +116,21 @@ html, body {
   display: block;
   pointer-events: none;
 }
+.hud-exit-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  pointer-events: auto;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  cursor: pointer;
+}
+.hud-exit-btn:hover { background: rgba(0,0,0,0.65); border-color: rgba(255,255,255,0.6); }
+
 .hud-panel {
   position: absolute;
   bottom: 20px;
