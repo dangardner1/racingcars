@@ -467,17 +467,25 @@ export class Track {
     }
   }
 
+  /**
+   * A damage strip flush with the road surface — spikes protrude up out of
+   * solid ground rather than sitting in a hole, so hitting it costs health
+   * but never drops a car into open space. The road under this hazard is
+   * built normally by _buildGround() (the path node is 'flat', not 'gap');
+   * this only adds the non-collision damage trigger and spike meshes on
+   * top of it.
+   */
   _buildSpikePit(hazard) {
     const span = hazard.spanNodes ?? 1;
     const width = hazard.width ?? this.data.path[hazard.atIndex]?.width ?? 10;
     const { center, quaternion, length, up } = this._hazardFrame(hazard.atIndex, span);
-    const pitCenter = new THREE.Vector3().copy(center).addScaledVector(up, -3);
+    const triggerCenter = new THREE.Vector3().copy(center).addScaledVector(up, 0.4);
 
     const body = new CANNON.Body({
       type: CANNON.Body.STATIC,
       collisionResponse: false,
-      shape: new CANNON.Box(new CANNON.Vec3(length / 2, 1, width / 2)),
-      position: toCannonVec(pitCenter),
+      shape: new CANNON.Box(new CANNON.Vec3(length / 2, 0.4, width / 2)),
+      position: toCannonVec(triggerCenter),
       quaternion: toCannonQuat(quaternion),
     });
     this.world.addBody(body);
@@ -490,7 +498,7 @@ export class Track {
     for (let i = 0; i < spikeCount; i++) {
       const t = (i + 0.5) / spikeCount;
       const mesh = new THREE.Mesh(spikeGeo, spikeMat);
-      mesh.position.copy(a).lerp(b, t).addScaledVector(up, -3);
+      mesh.position.copy(a).lerp(b, t).addScaledVector(up, 0.4);
       mesh.quaternion.copy(quaternion);
       this.scene.add(mesh);
     }

@@ -25,7 +25,7 @@ export function createHowToPlay(container, { onBack }) {
         <ul>
           <li><strong>Guard rails</strong> — the walls along the track. Hit one and you'll bounce right off.</li>
           <li><strong>Loops</strong> — you have to go fast enough to make it all the way around, or you'll fall!</li>
-          <li><strong>Gaps and moving platforms</strong> — time it just right so you don't fall through.</li>
+          <li><strong>Spike pits</strong> — a strip of sharp spikes sticking out of the road. Driving over them hurts!</li>
           <li><strong>Other cars</strong> — crashing hurts your car's health. Lose it all and you're out of the race!</li>
         </ul>
       </section>

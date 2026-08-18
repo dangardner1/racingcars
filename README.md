@@ -1,6 +1,6 @@
 # Battle Racer
 
-A top-down/three-quarter-view arcade battle racer built with [Three.js](https://threejs.org/) and [cannon-es](https://github.com/pmndrs/cannon-es). Two local players race 3 AI opponents around a genuine figure-eight circuit — the track crosses over itself at a real highway-style interchange, threading through a tunnel on one pass and over an elevated bridge on the other — full of hills, ramps, spike pits, crumbling bridges, loops, and moving platforms. Crash into each other, take damage, and be the last car standing (or cross the finish line first after a full lap).
+A top-down/three-quarter-view arcade battle racer built with [Three.js](https://threejs.org/) and [cannon-es](https://github.com/pmndrs/cannon-es). Two local players race 3 AI opponents around a genuine figure-eight circuit — the track crosses over itself at a real highway-style interchange, threading through a tunnel on one pass and over an elevated bridge on the other — full of hills, ramps, spike pits, crumbling bridges, and loops. Crash into each other, take damage, and be the last car standing (or cross the finish line first after a full lap).
 
 ## Features
 
@@ -8,7 +8,7 @@ A top-down/three-quarter-view arcade battle racer built with [Three.js](https://
 - **Real 4-wheel steering** (`CANNON.RaycastVehicle`) with suspension that follows hills, ramps, and bridge/tunnel decks
 - **10 themed figure-eight tracks** — Desert Canyon, Volcano, Ice Glacier, Neon City, Junkyard, Jungle Ruins, Construction Site, Space Station, Storm Coast, Haunted Circuit — each with its own tunnel-under/bridge-over crossing
 - **Destructible cars** — a 4-stage damage system with visual wear, part detachment, and elimination
-- **Environmental hazards** — hills, tunnels, bridges, loops, spike pits, crumbling bridges, moving platforms, boost pads
+- **Environmental hazards** — hills, tunnels, bridges, loops, spike pits, crumbling bridges, boost pads
 - **Win either way** — survive as the last car standing, or complete the lap first
 - **Elevated top-down camera** shared by both players, zooming out as they spread apart
 - **Procedural visuals** — tiled asphalt with lane markings, guardrails, terrain, and roadside props all generated in code; procedural sound too — no external art or audio assets
@@ -58,4 +58,4 @@ scripts/
   generate-tracks.mjs   # generator used to author all 10 figure-eight tracks
 ```
 
-Tracks are data-driven JSON files interpreted by `src/game/Track.js`: a track is an ordered, closed loop of centerline nodes (`path`, each with `x/y/z/width/type`). Elevation differences between nodes are hills for free; `type` per node picks `flat`/`gap`/`bridge`/`tunnel`/`crumblingBridge`. Features (loops) and hazards (spike pits, moving platforms, boost pads) are positioned by node index. New hazards or tracks can be added without touching the renderer or physics code.
+Tracks are data-driven JSON files interpreted by `src/game/Track.js`: a track is an ordered, closed loop of centerline nodes (`path`, each with `x/y/z/width/type`). Elevation differences between nodes are hills for free; `type` per node picks `flat`/`gap`/`bridge`/`tunnel`/`crumblingBridge`. Features (loops) and hazards (spike pits, boost pads) are positioned by node index. New hazards or tracks can be added without touching the renderer or physics code.
