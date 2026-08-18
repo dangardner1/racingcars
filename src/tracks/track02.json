@@ -856,14 +856,6 @@
   ],
   "hazards": [
     {
-      "type": "movingPlatform",
-      "atIndex": 30,
-      "spanNodes": 2,
-      "amplitude": 3,
-      "period": 2.2,
-      "axis": "vertical"
-    },
-    {
       "type": "boostPad",
       "atIndex": 44,
       "spanNodes": 2,

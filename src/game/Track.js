@@ -49,7 +49,6 @@ export class Track {
     this.groundMaterial = groundMaterial;
     this.loopMaterial = loopMaterial ?? groundMaterial;
     this.data = data;
-    this.movingPlatforms = [];
     this.crumblingBridges = [];
     this.lastHazardHit = new WeakMap();
     // Shapes belonging to guardrails/tunnel walls, tagged so the collision
@@ -464,7 +463,6 @@ export class Track {
   _buildHazards() {
     for (const hazard of this.data.hazards ?? []) {
       if (hazard.type === 'spikePit') this._buildSpikePit(hazard);
-      else if (hazard.type === 'movingPlatform') this._buildMovingPlatform(hazard);
       else if (hazard.type === 'boostPad') this._buildBoostPad(hazard);
     }
   }
@@ -553,37 +551,6 @@ export class Track {
     });
   }
 
-  _buildMovingPlatform(hazard) {
-    const span = hazard.spanNodes ?? 1;
-    const width = hazard.width ?? this.data.path[hazard.atIndex]?.width ?? 6;
-    const { center, quaternion, length, up, right } = this._hazardFrame(hazard.atIndex, span);
-
-    const body = new CANNON.Body({
-      type: CANNON.Body.KINEMATIC,
-      shape: new CANNON.Box(new CANNON.Vec3(length / 2, 0.25, width / 2)),
-      material: this.groundMaterial,
-      position: toCannonVec(center),
-      quaternion: toCannonQuat(quaternion),
-    });
-    this.world.addBody(body);
-
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(length, 0.5, width),
-      new THREE.MeshStandardMaterial({ color: 0x4488cc })
-    );
-    this.scene.add(mesh);
-
-    this.movingPlatforms.push({
-      body,
-      mesh,
-      base: center.clone(),
-      axisVec: (hazard.axis === 'lateral' ? right : up).clone(),
-      amplitude: hazard.amplitude ?? 2,
-      period: hazard.period ?? 3,
-      quaternion,
-    });
-  }
-
   /**
    * Ground-level chevrons pointing along the direction of travel. Purely
    * visual (no physics body), driven entirely by `path` already in the
@@ -666,28 +633,6 @@ export class Track {
 
   update(dt) {
     this.elapsed += dt;
-
-    for (const p of this.movingPlatforms) {
-      const omega = (Math.PI * 2) / p.period;
-      const t = this.elapsed * omega;
-      const offset = Math.sin(t) * p.amplitude;
-      const pos = new THREE.Vector3().copy(p.base).addScaledVector(p.axisVec, offset);
-      p.body.position.copy(toCannonVec(pos));
-      // A kinematic body's position was being teleported directly with its
-      // velocity left at the default (0,0,0) — cannon-es's contact/friction
-      // solver reads that velocity as ground truth, so a car resting on the
-      // platform saw a "stationary" surface even while it visibly moved,
-      // producing bad friction resolution that could pin the car in place
-      // (riding the platform vertically with zero horizontal traction, no
-      // longer responding to throttle/steering). Setting the analytic
-      // derivative here gives the solver the platform's real velocity for
-      // correct friction, while position is still snapped exactly each
-      // frame so the mesh/body never drift from the sine curve.
-      const speed = p.amplitude * omega * Math.cos(t);
-      p.body.velocity.copy(toCannonVec(p.axisVec).scale(speed));
-      p.mesh.position.copy(pos);
-      p.mesh.quaternion.copy(p.quaternion);
-    }
 
     for (const b of this.crumblingBridges) {
       if (b.collapsed) {
