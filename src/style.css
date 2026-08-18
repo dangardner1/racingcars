@@ -114,6 +114,16 @@ html, body {
 }
 .card-label { font-size: 0.8rem; text-transform: capitalize; }
 .pick-tag { font-size: 0.7rem; font-weight: bold; height: 1em; }
+.trim-row { display: flex; gap: 5px; }
+.trim-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.trim-swatch.trim-active { border-color: #fff; }
 .picked-p1 { border-color: #2299ee; }
 .picked-p2 { border-color: #ee3333; }
 
@@ -163,9 +173,23 @@ html, body {
 }
 .hud-bar-fill { height: 100%; width: 0%; background: #4caf50; transition: width 0.2s; }
 .hud-placement { margin-top: 4px; font-size: 0.9rem; }
+.hud-progress { margin-top: 2px; font-size: 0.75rem; opacity: 0.75; }
+.hud-timer {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.35);
+  padding: 3px 12px;
+  border-radius: 6px;
+}
 .hud-toasts {
   position: absolute;
-  top: 20px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

@@ -12,7 +12,7 @@ const STAGES = [
 ];
 
 export class DamageSystem {
-  constructor(car, scene, world) {
+  constructor(car, scene, world, { onEliminate } = {}) {
     this.car = car;
     this.scene = scene;
     this.world = world;
@@ -20,6 +20,8 @@ export class DamageSystem {
     this.stageIndex = -1;
     this.eliminated = false;
     this.debris = [];
+    this.explosionFx = [];
+    this.onEliminate = onEliminate;
   }
 
   applyDamage(amount) {
@@ -88,8 +90,58 @@ export class DamageSystem {
   }
 
   _eliminate() {
+    // _onStageEnter's `hp >= 100` check can re-trigger on every stage the
+    // damage-threshold loop walks through in one applyDamage() call once hp
+    // has reached 100 (e.g. a single hit that jumps straight past several
+    // thresholds) — harmless when elimination only set flags, but now it
+    // has real one-shot side effects (explosion, camera shake) that must
+    // not repeat.
+    if (this.eliminated) return;
     this.eliminated = true;
     this.car.eliminated = true;
+    this._explode();
+    this.onEliminate?.(this.car);
+  }
+
+  /** Bigger, showier burst than a normal part detachment — a handful of
+   * flying debris chunks plus a bright flash sphere that scales up and
+   * fades, purely cosmetic (no new physics interaction beyond the debris
+   * cubes already used for part detachment). */
+  _explode() {
+    const origin = this.car.physics.chassisBody.position;
+    const carVel = this.car.physics.chassisBody.velocity;
+    const debrisMat = new THREE.MeshStandardMaterial({ color: this.car.baseColor });
+    for (let i = 0; i < 8; i++) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.2), debrisMat);
+      mesh.position.set(origin.x, origin.y + 0.3, origin.z);
+      this.scene.add(mesh);
+      const body = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(origin.x, origin.y + 0.3, origin.z),
+        shape: new CANNON.Box(new CANNON.Vec3(0.1, 0.075, 0.1)),
+      });
+      const angle = (i / 8) * Math.PI * 2;
+      body.velocity.set(
+        carVel.x + Math.cos(angle) * 5,
+        carVel.y + 4 + Math.random() * 3,
+        carVel.z + Math.sin(angle) * 5
+      );
+      body.angularVelocity.set(
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10
+      );
+      this.world.addBody(body);
+      this.debris.push({ mesh, body, life: 2.5 });
+    }
+
+    const flashMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 3, transparent: true, opacity: 0.9 })
+    );
+    flashMesh.position.set(origin.x, origin.y + 0.5, origin.z);
+    this.scene.add(flashMesh);
+    this.explosionFx.push({ mesh: flashMesh, life: 0.5, maxLife: 0.5 });
   }
 
   update(dt) {
@@ -102,6 +154,18 @@ export class DamageSystem {
         this.scene.remove(d.mesh);
         this.world.removeBody(d.body);
         this.debris.splice(i, 1);
+      }
+    }
+
+    for (let i = this.explosionFx.length - 1; i >= 0; i--) {
+      const fx = this.explosionFx[i];
+      fx.life -= dt;
+      const t = 1 - Math.max(0, fx.life) / fx.maxLife;
+      fx.mesh.scale.setScalar(1 + t * 5);
+      fx.mesh.material.opacity = 0.9 * (1 - t);
+      if (fx.life <= 0) {
+        this.scene.remove(fx.mesh);
+        this.explosionFx.splice(i, 1);
       }
     }
   }

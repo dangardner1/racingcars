@@ -122,13 +122,23 @@ function startRace(trackData, p1Def, p2Def) {
   const track = new Track(world, scene, groundMaterial, trackData, loopMaterial);
   scene.background = new THREE.Color(track.skyColor);
   scene.fog = new THREE.Fog(track.fogColor, 60, 220);
+  soundManager.startAmbient(track.data.theme);
 
   const topDownCamera = new TopDownCamera(camera);
 
   function makeCar(def, lane, isHuman) {
     const spawn = spawnForLane(track, lane);
     const car = createCarFromDef(world, carMaterial, scene, def, spawn);
-    const damageSystem = new DamageSystem(car, scene, world);
+    // Elimination is exciting for both players watching the shared camera
+    // regardless of who got knocked out, so this shake/sound fires for any
+    // car's elimination, not gated to isHuman like the smaller per-impact
+    // shake below.
+    const damageSystem = new DamageSystem(car, scene, world, {
+      onEliminate: () => {
+        topDownCamera.addShake(0.8);
+        soundManager.playExplosion();
+      },
+    });
     car.damageSystem = damageSystem;
     car.physics.chassisBody.userData = { car };
     // Shake the shared camera and play a crash sound on hard hits to either
@@ -145,12 +155,23 @@ function startRace(trackData, p1Def, p2Def) {
   }
 
   const starts = track.data.startPositions;
-  const aiDefs = CAR_DEFS.filter((d) => d !== p1Def && d !== p2Def);
+  // Compares by id, not reference: Car Select now hands startRace() a
+  // shallow clone of the chosen def (trim color folded in), so the
+  // original CAR_DEFS entries are never reference-equal to p1Def/p2Def.
+  const aiDefs = CAR_DEFS.filter((d) => d.id !== p1Def.id && d.id !== p2Def.id);
 
   const p1Car = makeCar(p1Def, starts[0].lane, true);
   const p2Car = makeCar(p2Def, starts[1].lane, true);
   soundManager.startEngine(p1Car);
   soundManager.startEngine(p2Car);
+  // Camera shake/sound only for a human car's boost, matching the existing
+  // isHuman-gated crash feedback — AI-only boosts elsewhere on track don't
+  // affect the player-facing view/audio.
+  track.onBoostHit = (car) => {
+    if (car !== p1Car && car !== p2Car) return;
+    topDownCamera.addShake(0.25);
+    soundManager.playBoost();
+  };
   const aiEntries = aiDefs.slice(0, FIELD_SIZE - 2).map((def, i) => {
     const start = starts[i + 2] ?? { lane: starts[1].lane - 2 - i };
     const aiCar = makeCar(def, start.lane);
@@ -220,6 +241,7 @@ const carSelect = createCarSelect(uiRoot, CAR_DEFS, {
 });
 function exitToMainMenu() {
   soundManager.stopAllEngines();
+  soundManager.stopAmbient();
   clearSceneForNewRace();
   race = null;
   gameState.set(States.MAIN_MENU);
@@ -247,6 +269,7 @@ gameState.onChange((state) => {
 mainMenu.show();
 
 if (import.meta.env.DEV) window.__gameState = gameState;
+if (import.meta.env.DEV) window.__hud = hud;
 
 // --- Main loop --------------------------------------------------------------
 let lastTime = performance.now();
@@ -288,7 +311,7 @@ function tick(now) {
     track.update(frameDt);
     for (const c of allCars) handleFallRecovery(c);
     raceManager.update();
-    hud.update(raceEntries);
+    hud.update(raceEntries, { totalLength: track.waypoints.totalLength, elapsed: track.elapsed });
 
     topDownCamera.update(p1Car.position, p2Car.position, frameDt);
     soundManager.updateEngine(p1Car, p1Car.physics.chassisBody.velocity.length(), p1Car.eliminated);
@@ -296,6 +319,7 @@ function tick(now) {
 
     if (raceManager.finished) {
       soundManager.stopAllEngines();
+      soundManager.stopAmbient();
       hud.hide();
       touchControls.hide();
       gameState.set(States.RESULTS);
