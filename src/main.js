@@ -270,6 +270,7 @@ mainMenu.show();
 
 if (import.meta.env.DEV) window.__gameState = gameState;
 if (import.meta.env.DEV) window.__hud = hud;
+if (import.meta.env.DEV) window.__resultsScreen = resultsScreen;
 
 // --- Main loop --------------------------------------------------------------
 let lastTime = performance.now();
