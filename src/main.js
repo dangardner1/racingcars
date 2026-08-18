@@ -20,6 +20,7 @@ import { createTrackSelect } from './ui/TrackSelect.js';
 import { createCarSelect } from './ui/CarSelect.js';
 import { createHUD } from './ui/HUD.js';
 import { createTouchControls } from './ui/TouchControls.js';
+import { createHowToPlay } from './ui/HowToPlay.js';
 import { createResultsScreen } from './ui/ResultsScreen.js';
 import { SoundManager } from './audio/SoundManager.js';
 
@@ -199,6 +200,10 @@ const mainMenu = createMainMenu(uiRoot, {
     soundManager.unlock(); // must happen from a user-gesture handler
     gameState.set(States.TRACK_SELECT);
   },
+  onHowToPlay: () => gameState.set(States.HOW_TO_PLAY),
+});
+const howToPlay = createHowToPlay(uiRoot, {
+  onBack: () => gameState.set(States.MAIN_MENU),
 });
 const trackSelect = createTrackSelect(uiRoot, TRACKS, {
   onSelect: (trackData) => {
@@ -230,11 +235,12 @@ const resultsScreen = createResultsScreen(uiRoot, {
   onMainMenu: exitToMainMenu,
 });
 
-const screens = { mainMenu, trackSelect, carSelect, resultsScreen };
+const screens = { mainMenu, howToPlay, trackSelect, carSelect, resultsScreen };
 gameState.onChange((state) => {
   for (const s of Object.values(screens)) s.hide();
   if (state !== States.RACING) { hud.hide(); touchControls.hide(); }
   if (state === States.MAIN_MENU) mainMenu.show();
+  else if (state === States.HOW_TO_PLAY) howToPlay.show();
   else if (state === States.TRACK_SELECT) trackSelect.show();
   else if (state === States.CAR_SELECT) carSelect.show();
 });

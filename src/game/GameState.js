@@ -1,5 +1,6 @@
 export const States = {
   MAIN_MENU: 'MAIN_MENU',
+  HOW_TO_PLAY: 'HOW_TO_PLAY',
   TRACK_SELECT: 'TRACK_SELECT',
   CAR_SELECT: 'CAR_SELECT',
   RACING: 'RACING',
