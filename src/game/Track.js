@@ -632,10 +632,23 @@ export class Track {
     this.elapsed += dt;
 
     for (const p of this.movingPlatforms) {
-      const t = (this.elapsed / p.period) * Math.PI * 2;
+      const omega = (Math.PI * 2) / p.period;
+      const t = this.elapsed * omega;
       const offset = Math.sin(t) * p.amplitude;
       const pos = new THREE.Vector3().copy(p.base).addScaledVector(p.axisVec, offset);
       p.body.position.copy(toCannonVec(pos));
+      // A kinematic body's position was being teleported directly with its
+      // velocity left at the default (0,0,0) — cannon-es's contact/friction
+      // solver reads that velocity as ground truth, so a car resting on the
+      // platform saw a "stationary" surface even while it visibly moved,
+      // producing bad friction resolution that could pin the car in place
+      // (riding the platform vertically with zero horizontal traction, no
+      // longer responding to throttle/steering). Setting the analytic
+      // derivative here gives the solver the platform's real velocity for
+      // correct friction, while position is still snapped exactly each
+      // frame so the mesh/body never drift from the sine curve.
+      const speed = p.amplitude * omega * Math.cos(t);
+      p.body.velocity.copy(toCannonVec(p.axisVec).scale(speed));
       p.mesh.position.copy(pos);
       p.mesh.quaternion.copy(p.quaternion);
     }
