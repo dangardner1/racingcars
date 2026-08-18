@@ -177,8 +177,11 @@ function startRace(trackData, p1Def, p2Def) {
   const aiEntries = aiDefs.slice(0, FIELD_SIZE - 2).map((def, i) => {
     const start = starts[i + 2] ?? { lane: starts[1].lane - 2 - i };
     const aiCar = makeCar(def, start.lane);
+    // AI targets slightly below its own topSpeed (still reachable on the
+    // straights, never faster than a player in the same car) so opponents
+    // pressure the player less relentlessly.
     const controller = new AIController(aiCar, track.waypoints, {
-      baseSpeed: def.topSpeed,
+      baseSpeed: def.topSpeed * 0.88,
       skill: def.skill,
     });
     return { car: aiCar, controller };

@@ -859,13 +859,13 @@
       "type": "boostPad",
       "atIndex": 44,
       "spanNodes": 2,
-      "speed": 32
+      "speed": 27
     },
     {
       "type": "spikePit",
       "atIndex": 76,
       "spanNodes": 1,
-      "damage": 28
+      "damage": 14
     }
   ],
   "startIndex": 18,

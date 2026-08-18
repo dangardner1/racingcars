@@ -11,7 +11,7 @@ const WORLD_UP = new CANNON.Vec3(0, 1, 0);
 // driving forces can't right it. If the car stays flipped and roughly
 // stationary this long, pop it back over.
 const FLIP_UP_DOT_THRESHOLD = 0.2; // world-up . chassis-up; <0 means fully inverted
-const STUCK_TIME_TO_RECOVER = 0.6;
+const STUCK_TIME_TO_RECOVER = 0.35;
 const RECOVERY_COOLDOWN = 1.0;
 
 // Wheelie correction: with only the rear axle grounded, the front (steered)
