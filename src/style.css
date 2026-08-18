@@ -166,3 +166,80 @@ html, body {
   border-radius: 6px;
   font-size: 0.9rem;
 }
+
+/* On-screen touch controls: hidden entirely on hover-capable/fine-pointer
+   (i.e. mouse+keyboard) devices regardless of window width, shown on any
+   touch device regardless of width — a real keyboard is what matters, not
+   viewport size. JS only ever toggles between 'none' and 'flex'; the
+   !important here is what lets this media query win over that on desktop. */
+.touch-controls {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+@media (hover: hover) and (pointer: fine) {
+  .touch-controls { display: none !important; }
+}
+.touch-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.touch-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+.touch-steer, .touch-pedals {
+  display: flex;
+  gap: 8px;
+}
+.touch-pedals { flex-direction: column; }
+.touch-btn {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(20,20,28,0.55);
+  color: #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.touch-btn.touch-active {
+  background: rgba(255,255,255,0.35);
+  border-color: rgba(255,255,255,0.7);
+}
+.touch-handbrake {
+  width: 116px;
+  height: 30px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  border-radius: 8px;
+}
+
+/* Narrow viewports: HUD status panels move from the bottom corners (where
+   touch controls now live) up under the exit button, and shrink so both
+   fit side by side without colliding in the middle. */
+@media (max-width: 700px) {
+  .hud-panel {
+    top: 60px;
+    bottom: auto;
+    width: 130px;
+  }
+  .hud-p1 { left: 10px; }
+  .hud-p2 { right: 10px; }
+  .hud-name { font-size: 0.85rem; }
+  .hud-placement { font-size: 0.8rem; }
+}

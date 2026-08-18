@@ -28,3 +28,14 @@ export function readInput(keys) {
 export function isKeyDown(code) {
   return pressed.has(code);
 }
+
+/**
+ * Lets a non-keyboard source (on-screen touch controls) drive the same
+ * `pressed` set that keydown/keyup populate, so readInput() and everything
+ * downstream of it stays input-source-agnostic instead of needing a
+ * separate touch code path.
+ */
+export function setVirtualKey(code, isDown) {
+  if (isDown) pressed.add(code);
+  else pressed.delete(code);
+}

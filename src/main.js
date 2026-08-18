@@ -10,7 +10,7 @@ import { GameState, States } from './game/GameState.js';
 import { CAR_DEFS } from './cars/carDefs.js';
 import { TRACKS } from './tracks/index.js';
 import { attachCollisionDamage } from './physics/CollisionEvents.js';
-import { readInput } from './input/InputManager.js';
+import { readInput, isKeyDown } from './input/InputManager.js';
 import { P1_KEYS, P2_KEYS } from './input/KeyBindings.js';
 import { AIController } from './ai/AIController.js';
 import { Waypoints } from './ai/Waypoints.js';
@@ -19,6 +19,7 @@ import { createMainMenu } from './ui/MainMenu.js';
 import { createTrackSelect } from './ui/TrackSelect.js';
 import { createCarSelect } from './ui/CarSelect.js';
 import { createHUD } from './ui/HUD.js';
+import { createTouchControls } from './ui/TouchControls.js';
 import { createResultsScreen } from './ui/ResultsScreen.js';
 import { SoundManager } from './audio/SoundManager.js';
 
@@ -69,6 +70,7 @@ resize();
 let race = null;
 const soundManager = new SoundManager();
 if (import.meta.env.DEV) window.__sound = soundManager;
+if (import.meta.env.DEV) window.__input = { isKeyDown, readInput };
 
 const FIELD_SIZE = 5; // 2 human + 3 AI
 const LANE_SPACING = 1.8; // keeps the outermost of 5 lanes (+-2) within the 11-wide road
@@ -171,6 +173,7 @@ function startRace(trackData, p1Def, p2Def) {
   if (import.meta.env.DEV) window.__race = race;
 
   hud.show();
+  touchControls.show();
   gameState.set(States.RACING);
 }
 
@@ -218,6 +221,7 @@ function exitToMainMenu() {
 }
 
 const hud = createHUD(uiRoot, { onExit: exitToMainMenu });
+const touchControls = createTouchControls(uiRoot, P1_KEYS, P2_KEYS);
 const resultsScreen = createResultsScreen(uiRoot, {
   onRaceAgain: () => {
     const { trackData, p1Def, p2Def } = gameState.selection;
@@ -229,7 +233,7 @@ const resultsScreen = createResultsScreen(uiRoot, {
 const screens = { mainMenu, trackSelect, carSelect, resultsScreen };
 gameState.onChange((state) => {
   for (const s of Object.values(screens)) s.hide();
-  if (state !== States.RACING) hud.hide();
+  if (state !== States.RACING) { hud.hide(); touchControls.hide(); }
   if (state === States.MAIN_MENU) mainMenu.show();
   else if (state === States.TRACK_SELECT) trackSelect.show();
   else if (state === States.CAR_SELECT) carSelect.show();
@@ -287,6 +291,7 @@ function tick(now) {
     if (raceManager.finished) {
       soundManager.stopAllEngines();
       hud.hide();
+      touchControls.hide();
       gameState.set(States.RESULTS);
       resultsScreen.show(raceManager.placements);
     }
