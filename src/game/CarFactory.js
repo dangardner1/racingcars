@@ -9,7 +9,7 @@ import { Car } from './Car.js';
  * track's path so the car starts facing the direction of travel and
  * matching any slope there.
  */
-export function createCarFromDef(world, carMaterial, scene, def, spawn) {
+export function createCarFromDef(world, carMaterial, scene, def, spawn, playerLabel) {
   const { position, quaternion } = spawn;
   const car = new Car(world, carMaterial, scene, {
     position: new CANNON.Vec3(position.x, position.y, position.z),
@@ -19,6 +19,8 @@ export function createCarFromDef(world, carMaterial, scene, def, spawn) {
     wheelBase: def.wheelBase,
     mass: def.mass,
     topSpeed: def.topSpeed,
+    label: playerLabel?.text,
+    labelColor: playerLabel?.color,
   });
   car.def = def;
   return car;

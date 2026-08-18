@@ -2,21 +2,25 @@
  * Shared elevated top-down/three-quarter camera for 2 local players (chosen
  * over split-screen — with 3 AI cars also on screen, halving screen space
  * would make hazards/opponents too hard to read). Frames the midpoint of
- * both human players and zooms out as they separate, clamped to a max
- * spread so they never shrink to unreadable dots; a trailing-player
- * indicator kicks in once that clamp is reached.
+ * both human players and zooms out as they separate.
  *
  * The camera sits at a fixed world-space offset above and behind the
  * tracked point — it does not rotate to follow either player's heading.
  * That keeps a figure-eight (which doubles back on itself) and elevation
  * changes (hills/tunnels/bridges) easy to read without the extra
  * complexity/disorientation of a heading-following chase camera.
+ *
+ * Zoom-out distance is derived directly from the camera's actual FOV/aspect
+ * and the players' real XZ separation (not a hand-tuned fixed cap) — a
+ * fixed cap previously left both players outside the camera's frustum
+ * entirely once they separated far enough, since the cap's zoom-out
+ * distance was well short of what the FOV geometry actually needed to fit
+ * that much spread on screen.
  */
 const BASE_HEIGHT = 28;
-const BASE_BACK = 20; // fixed world +Z offset behind the framed point
-const MAX_EXTRA = 24;
-const ZOOM_START_SPREAD = 15; // players closer than this (XZ distance): no zoom-out
-const ZOOM_MAX_SPREAD = 70; // beyond this, camera stops zooming out further
+const BASE_BACK = 20; // fixed world +Z offset behind the framed point when players are close together
+const HEIGHT_TO_BACK_RATIO = BASE_HEIGHT / BASE_BACK; // keeps the same downward tilt angle at every zoom level
+const FRAME_MARGIN = 1.4; // headroom above the bare-minimum FOV fit, so a car isn't pinned to the screen edge
 const SMOOTHING = 4; // higher = snappier follow
 
 const SHAKE_DECAY = 3.5; // trauma units/sec
@@ -27,8 +31,7 @@ export class TopDownCamera {
     this.camX = 0;
     this.camY = 0;
     this.camZ = 0;
-    this.zoom = 0; // 0..1, smoothed toward zoomT each frame
-    this.maxSpreadReached = false;
+    this.back = BASE_BACK; // smoothed camera distance; height is derived from this each frame
     this.trauma = 0;
   }
 
@@ -44,18 +47,27 @@ export class TopDownCamera {
     const midZ = (p1.z + p2.z) / 2;
     const spread = Math.hypot(p1.x - p2.x, p1.z - p2.z);
 
-    const zoomT = clamp((spread - ZOOM_START_SPREAD) / (ZOOM_MAX_SPREAD - ZOOM_START_SPREAD), 0, 1);
-    this.maxSpreadReached = spread >= ZOOM_MAX_SPREAD;
+    // Required camera-to-target distance so BOTH the vertical and
+    // (aspect-scaled) horizontal FOV comfortably contain the full spread —
+    // the tighter of the two axes wins, so a narrow/portrait viewport
+    // doesn't leave a player off the side even though they'd fit vertically.
+    const halfFovY = (this.camera.fov * Math.PI) / 180 / 2;
+    const tanY = Math.tan(halfFovY);
+    const tanX = tanY * this.camera.aspect;
+    const limitingTan = Math.min(tanX, tanY);
+    const requiredSlant = spread > 0 ? (spread * FRAME_MARGIN) / (2 * limitingTan) : 0;
+    const slantPerBack = Math.sqrt(HEIGHT_TO_BACK_RATIO * HEIGHT_TO_BACK_RATIO + 1);
+    const requiredBack = requiredSlant / slantPerBack;
+    const targetBack = Math.max(BASE_BACK, requiredBack);
 
     const lerpFactor = 1 - Math.exp(-SMOOTHING * dt);
     this.camX += (midX - this.camX) * lerpFactor;
     this.camY += (midY - this.camY) * lerpFactor;
     this.camZ += (midZ - this.camZ) * lerpFactor;
-    this.zoom += (zoomT - this.zoom) * lerpFactor;
+    this.back += (targetBack - this.back) * lerpFactor;
 
-    const extra = this.zoom * MAX_EXTRA;
-    const height = BASE_HEIGHT + extra;
-    const back = BASE_BACK + extra * 0.7;
+    const back = this.back;
+    const height = back * HEIGHT_TO_BACK_RATIO;
 
     this.trauma = Math.max(0, this.trauma - SHAKE_DECAY * dt);
     const shake = this.trauma * this.trauma; // squared falloff: sharp punch, quick settle
@@ -64,18 +76,5 @@ export class TopDownCamera {
 
     this.camera.position.set(this.camX + shakeX, this.camY + height, this.camZ + back + shakeZ);
     this.camera.lookAt(this.camX, this.camY, this.camZ);
-
-    // Trailing-player indicator: which player is furthest from camera
-    // center once we've hit max zoom-out (they may be drifting off-frame).
-    this.trailingPlayer = null;
-    if (this.maxSpreadReached) {
-      const d1 = Math.hypot(p1.x - this.camX, p1.z - this.camZ);
-      const d2 = Math.hypot(p2.x - this.camX, p2.z - this.camZ);
-      this.trailingPlayer = d1 > d2 ? 1 : 2;
-    }
   }
-}
-
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
 }

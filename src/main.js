@@ -126,9 +126,9 @@ function startRace(trackData, p1Def, p2Def) {
 
   const topDownCamera = new TopDownCamera(camera);
 
-  function makeCar(def, lane, isHuman) {
+  function makeCar(def, lane, isHuman, playerLabel) {
     const spawn = spawnForLane(track, lane);
-    const car = createCarFromDef(world, carMaterial, scene, def, spawn);
+    const car = createCarFromDef(world, carMaterial, scene, def, spawn, playerLabel);
     // Elimination is exciting for both players watching the shared camera
     // regardless of who got knocked out, so this shake/sound fires for any
     // car's elimination, not gated to isHuman like the smaller per-impact
@@ -160,8 +160,10 @@ function startRace(trackData, p1Def, p2Def) {
   // original CAR_DEFS entries are never reference-equal to p1Def/p2Def.
   const aiDefs = CAR_DEFS.filter((d) => d.id !== p1Def.id && d.id !== p2Def.id);
 
-  const p1Car = makeCar(p1Def, starts[0].lane, true);
-  const p2Car = makeCar(p2Def, starts[1].lane, true);
+  // Colors match the existing P1/P2 accent colors used elsewhere in the UI
+  // (Car Select's picked-p1/picked-p2 border, HUD panel styling).
+  const p1Car = makeCar(p1Def, starts[0].lane, true, { text: '1', color: '#2299ee' });
+  const p2Car = makeCar(p2Def, starts[1].lane, true, { text: '2', color: '#ee3333' });
   soundManager.startEngine(p1Car);
   soundManager.startEngine(p2Car);
   // Camera shake/sound only for a human car's boost, matching the existing

@@ -2,9 +2,44 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createCarPhysics } from '../physics/CarPhysics.js';
 
+/**
+ * A small always-facing-camera badge floating above a car, used to mark
+ * which of the several cars on screen is Player 1 vs Player 2 — now that
+ * the camera can be zoomed out far enough to keep both players in frame
+ * (see TopDownCamera.js), telling the two apart at a glance needs more
+ * than "it's the blue/red one" once other similarly-colored AI cars are
+ * also on screen. depthTest is off so the badge stays visible even when
+ * briefly behind another car or a hazard mesh.
+ */
+function createLabelSprite(text, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(64, 64, 54, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 8;
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 70px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 70);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(1.7, 1.7, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
 export class Car {
   constructor(world, carMaterial, scene, options = {}) {
-    const { color = 0x2299ee, chassisSize = [1.3, 0.4, 0.7] } = options;
+    const { color = 0x2299ee, chassisSize = [1.3, 0.4, 0.7], label = null, labelColor = '#222222' } = options;
     const [hx, hy, hz] = chassisSize;
     this.physics = createCarPhysics(world, carMaterial, {
       ...options,
@@ -67,6 +102,15 @@ export class Car {
       return mesh;
     });
 
+    // Positioned in world space each frame (like the wheels above), not as
+    // a child of this.group, so a spin/flip never rotates the badge offset
+    // sideways — it should only ever float straight up from the car.
+    if (label) {
+      this.labelSprite = createLabelSprite(label, labelColor);
+      this.labelHeight = hy * 1.4 + 1.3;
+      scene.add(this.labelSprite);
+    }
+
     scene.add(this.group);
   }
 
@@ -95,6 +139,10 @@ export class Car {
       mesh.quaternion.copy(wheel.worldTransform.quaternion);
       mesh.rotateX(Math.PI / 2);
     });
+
+    if (this.labelSprite) {
+      this.labelSprite.position.set(chassisBody.position.x, chassisBody.position.y + this.labelHeight, chassisBody.position.z);
+    }
   }
 
   get position() {
