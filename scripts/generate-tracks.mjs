@@ -22,7 +22,7 @@ const THEMES = [
     scale: 1.0, hillAmp: 3.5, bridgeHeight: 8.5, pitDamage: 15, bridgeHits: 2, boostSpeed: 26 },
   { file: 'track02', id: 'track02', theme: 'volcano', sky: '#c94e2d', fog: '#a03a24', ground: '#4a2318',
     scale: 1.05, hillAmp: 4.5, bridgeHeight: 9, pitDamage: 16, bridgeHits: 2, boostSpeed: 26 },
-  { file: 'track03', id: 'track03', theme: 'ice_glacier', sky: '#bfe6f5', fog: '#d8f0fa', ground: '#e8f6fb',
+  { file: 'track03', id: 'track03', theme: 'ice_glacier', sky: '#bfe6f5', fog: '#d8f0fa', ground: '#7fa8bd',
     scale: 0.92, hillAmp: 2.5, bridgeHeight: 7.5, pitDamage: 11, bridgeHits: 3, boostSpeed: 24 },
   { file: 'track04', id: 'track04', theme: 'neon_city', sky: '#1a1030', fog: '#241640', ground: '#2c2c3a',
     scale: 1.1, hillAmp: 2, bridgeHeight: 10, pitDamage: 14, bridgeHits: 2, boostSpeed: 27 },

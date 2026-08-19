@@ -5,10 +5,24 @@ const MAX_DAMAGE_PER_HIT = 35;
 /**
  * Converts chassis collisions into damage events. Impact severity is derived
  * from relative velocity along the contact normal, so a gentle nudge from
- * another car doesn't hurt but a head-on wall hit does.
+ * another car doesn't hurt but a head-on hit does.
+ *
+ * `wallShapes` (Track.js's `railShapes` set — guardrails and tunnel walls)
+ * is exempted entirely: hitting a wall already bounces the car and nudges
+ * its heading back toward the track (Track.js's wallBounceTangent), and
+ * that's meant to read as a forgiving boundary, not a hazard — stacking
+ * damage on top of it made clipping a guardrail feel like a punishment for
+ * driving near the edge rather than a soft correction. Car-vs-car impacts
+ * (no shape involved, just two chassis bodies) still damage normally —
+ * that crash-into-each-other exchange is the core of the game.
  */
-export function attachCollisionDamage(chassisBody, damageSystem, onImpact) {
+export function attachCollisionDamage(chassisBody, damageSystem, onImpact, wallShapes) {
   chassisBody.addEventListener('collide', (event) => {
+    if (wallShapes) {
+      const contact = event.contact;
+      const otherShape = contact.bi === chassisBody ? contact.sj : contact.si;
+      if (wallShapes.has(otherShape)) return;
+    }
     const impactVelocity = Math.abs(event.contact.getImpactVelocityAlongNormal());
     if (impactVelocity < MIN_IMPACT_VELOCITY) return;
     const damage = Math.min(

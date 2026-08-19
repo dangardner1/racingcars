@@ -150,7 +150,7 @@ function startRace(trackData, p1Def, p2Def) {
           soundManager.playCrash(damage / 30);
         }
       : undefined;
-    attachCollisionDamage(car.physics.chassisBody, damageSystem, onImpact);
+    attachCollisionDamage(car.physics.chassisBody, damageSystem, onImpact, track.railShapes);
     return car;
   }
 
